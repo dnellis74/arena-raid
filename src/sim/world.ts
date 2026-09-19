@@ -12,7 +12,7 @@ import type {
   StateId,
   Vec2,
 } from './types.ts';
-import { ARENA_H, ARENA_W } from './types.ts';
+import { ARENA_H, ARENA_W, DEFAULT_PARTY_ORDER } from './types.ts';
 import { dist } from './vec.ts';
 
 export interface World {
@@ -64,7 +64,7 @@ export function createReferenceFight(seed: number): World {
     state: 'close_and_attack',
   });
 
-  return {
+  const world: World = {
     encounter,
     actors: [arcanist, goblin],
     tick: 0,
@@ -80,6 +80,8 @@ export function createReferenceFight(seed: number): World {
     nextFloatId: 1,
     nextGroundId: 1,
   };
+  setPartyOrder(world, DEFAULT_PARTY_ORDER);
+  return world;
 }
 
 export function getActor(world: World, id: ActorId): Actor | undefined {

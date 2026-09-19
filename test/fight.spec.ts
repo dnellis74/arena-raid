@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createReferenceFight } from '../src/sim/world.ts';
+import { createReferenceFight, setPartyOrder } from '../src/sim/world.ts';
 import { stepWorld, runTicks } from '../src/sim/step.ts';
 import { DT } from '../src/sim/types.ts';
 import { mulberry32 } from '../src/sim/rng.ts';
@@ -9,7 +9,6 @@ import { runHeadlessOffline, decideOfflineSync, tickOfflineDecisions } from '../
 import { buildDigest, assertDigestClean } from '../src/net/digest.ts';
 import { exportDecisionLog } from '../src/replay.ts';
 import { setReplayLog, clearReplay, tickDecisions } from '../src/net/decide.ts';
-import { createReferenceFight as spawn } from '../src/sim/world.ts';
 import {
   resolveSubmitOrderText,
   shouldResyncOrderInput,
@@ -62,7 +61,7 @@ describe('sim determinism', () => {
     runHeadlessOffline(w1, 20);
     const log = exportDecisionLog(w1);
 
-    const w2 = spawn(99);
+    const w2 = createReferenceFight(99);
     setReplayLog(log);
     const maxTicks = Math.ceil(20 / DT);
     for (let i = 0; i < maxTicks && !w2.matchOver; i++) {
@@ -230,12 +229,24 @@ describe('digest fog of war and no numbers', () => {
     expect(digest.orders?.given_directly_to_this_character).toBe('keep your distance and shoot');
   });
 
-  it('omits state.orders when standingOrder is empty (default spawn)', () => {
+  it('sends party order by default and omits character order until specified', () => {
     const w = createReferenceFight(1);
     const p = w.actors.find((a) => a.side === 'player')!;
     expect(p.standingOrder).toBeNull();
+    expect(w.partyOrder).toContain('when healthy stand and fight');
+    expect(p.partyOrder).toBe(w.partyOrder);
     const digest = buildDigest(w, p);
-    expect(digest.orders).toBeUndefined();
+    expect(digest.orders?.given_directly_to_this_character).toBeUndefined();
+    expect(digest.orders?.given_to_the_whole_party).toBe(w.partyOrder);
+  });
+
+  it('includes character order only when standingOrder is set', () => {
+    const w = createReferenceFight(1);
+    const p = w.actors.find((a) => a.side === 'player')!;
+    p.standingOrder = 'kite and shoot';
+    const digest = buildDigest(w, p);
+    expect(digest.orders?.given_directly_to_this_character).toBe('kite and shoot');
+    expect(digest.orders?.given_to_the_whole_party).toBe(w.partyOrder);
   });
 
   it('issueDecide fetch body includes state.orders after order is set (live client path)', async () => {
@@ -304,14 +315,14 @@ describe('digest fog of war and no numbers', () => {
 });
 
 describe('reference fight', () => {
-  it('Case A: default hold_and_shoot loses', () => {
+  it('Case A: hold_and_shoot with no orders loses', () => {
     const w = createReferenceFight(42);
     const p = w.actors.find((a) => a.side === 'player')!;
     const g = w.actors.find((a) => a.side === 'enemy')!;
     p.standingOrder = null;
+    setPartyOrder(w, null); // isolate role-default hold (default party would kite when hurt)
     p.state = 'hold_and_shoot';
     g.state = 'close_and_attack';
-    // Pin offline to role defaults (no order → hold for arcanist)
     runHeadlessOffline(w, 30);
     expect(w.winner).toBe('enemy');
     expect(g.hp / g.hpMax).toBeGreaterThanOrEqual(0.25);

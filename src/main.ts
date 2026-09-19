@@ -98,7 +98,8 @@ function resetMatch(): void {
   matchEndPrinted = false;
   world = createReferenceFight(seed);
 
-  if (savedParty) setPartyOrder(world, savedParty);
+  // Reapply prior party order exactly (including null if the player cleared it).
+  setPartyOrder(world, savedParty);
   for (const a of world.actors) {
     const order = savedStanding.get(a.id);
     if (order !== undefined) a.standingOrder = order;

@@ -171,14 +171,19 @@ export function buildDigest(world: World, actor: Actor): DecideDigest {
   };
 
   const orders: NonNullable<DecideDigest['orders']> = {};
-  // Fog of war: only this actor's own orders — never the opposing side's
-  if (actor.standingOrder) {
-    orders.given_directly_to_this_character = actor.standingOrder;
+  // Fog of war: only this actor's own orders — never the opposing side's.
+  // Character order only when the player actually specified one (trimmed).
+  const direct = actor.standingOrder?.trim();
+  if (direct) {
+    orders.given_directly_to_this_character = direct;
   }
-  if (actor.side === 'player' && (actor.partyOrder || world.partyOrder)) {
-    orders.given_to_the_whole_party = actor.partyOrder ?? world.partyOrder ?? undefined;
+  // Party order for player-side actors — always include when present.
+  if (actor.side === 'player') {
+    const party = (actor.partyOrder ?? world.partyOrder)?.trim();
+    if (party) {
+      orders.given_to_the_whole_party = party;
+    }
   }
-  // Enemy standing order is THEIR order — include for enemy actors only
   if (Object.keys(orders).length > 0) digest.orders = orders;
 
   return digest;

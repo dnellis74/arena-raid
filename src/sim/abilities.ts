@@ -12,6 +12,25 @@ function clampPos(pos: Vec2, r: number): Vec2 {
   };
 }
 
+/** Edge-to-point reach for ground placement (point has no radius). */
+function groundReach(caster: Actor, point: Vec2): number {
+  return dist(caster.pos, point) - caster.radius;
+}
+
+/** Ground range gate: prefer gap-to-actor when placing on a target's feet. */
+function groundOutOfRange(
+  caster: Actor,
+  point: Vec2,
+  target: Actor | null | undefined,
+  range: number,
+  slack: number,
+): boolean {
+  if (target && target.alive) {
+    return gapTo(caster, target) > range + slack;
+  }
+  return groundReach(caster, point) > range + slack;
+}
+
 export function tryBeginCast(
   world: World,
   actor: Actor,
@@ -22,11 +41,12 @@ export function tryBeginCast(
   if (!actor.alive || actor.casting) return false;
   if ((actor.cooldowns[abilityId] ?? 0) > 0) return false;
   const ab = getAbility(abilityId);
-  if (target && ab.delivery !== 'self' && ab.delivery !== 'ground') {
+  if (ab.delivery === 'ground') {
+    const p = point ?? (target ? target.pos : undefined);
+    if (!p) return false;
+    if (groundOutOfRange(actor, p, target, ab.range, 0.05)) return false;
+  } else if (target && ab.delivery !== 'self') {
     if (gapTo(actor, target) > ab.range + 0.05) return false;
-  }
-  if (ab.delivery === 'ground' && point) {
-    if (dist(actor.pos, point) > ab.range + 0.05) return false;
   }
 
   actor.cooldowns[abilityId] = ab.cooldown;
@@ -89,7 +109,7 @@ export function resolveAbility(
   if (ab.delivery === 'ground') {
     const p = point ?? target?.pos;
     if (!p) return;
-    if (dist(caster.pos, p) > ab.range + 0.15) return;
+    if (groundOutOfRange(caster, p, target, ab.range, 0.15)) return;
     for (const fx of ab.effects ?? []) {
       if (fx.type === 'slow_zone') {
         world.groundEffects.push({

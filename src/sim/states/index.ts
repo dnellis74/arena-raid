@@ -154,12 +154,12 @@ export const skirmish: StateHandler = (world, actor) => {
   } else if (gap > max) {
     applyMove(world, actor, toward);
   } else {
-    // In band: stand still to shoot (movement cancels wind-up). While the attack
-    // is on cooldown and the enemy is closing through the lower half, drift back.
-    const attackPriority = (actor.stateParams.abilityPriority ?? actor.abilities).filter(
-      (id) => getAbility(id).kind === 'attack',
-    );
-    const id = readyAbility(actor, attackPriority, gap);
+    // In band: stand still and cast (movement cancels wind-up). Full ability
+    // priority — utilities like Glyph of Slowing must fire when Jev puts them
+    // first. While nothing is ready and the enemy closes through the lower half,
+    // drift back.
+    const priority = actor.stateParams.abilityPriority ?? actor.abilities;
+    const id = readyAbility(actor, priority, gap);
     const mid = (min + max) / 2;
     if (id) {
       actor.vel = zero();

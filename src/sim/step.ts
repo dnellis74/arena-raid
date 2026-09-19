@@ -19,11 +19,13 @@ export function stepWorld(world: World, dt = DT): void {
     for (const s of actor.statuses) s.remaining -= dt;
     actor.statuses = actor.statuses.filter((s) => s.remaining > 0);
 
-    // Apply slow from ground zones
+    // Apply slow from ground zones (enemies of the zone owner only)
     actor.statuses = actor.statuses.filter((s) => s.type !== 'slow');
     for (const g of world.groundEffects) {
       if (g.kind !== 'slow_zone') continue;
-      if (actor.side === 'enemy' && dist(actor.pos, g.pos) <= g.radius) {
+      const owner = world.actors.find((a) => a.id === g.ownerId);
+      if (!owner || actor.side === owner.side) continue;
+      if (dist(actor.pos, g.pos) <= g.radius) {
         actor.statuses.push({ type: 'slow', remaining: dt * 2, factor: g.factor });
       }
     }
