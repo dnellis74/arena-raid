@@ -1,6 +1,6 @@
 import type { Actor } from '../sim/types.ts';
 import type { World } from '../sim/world.ts';
-import { healthBucket } from '../sim/buckets.ts';
+import { conditionOf, type ConditionLabel } from '../sim/buckets.ts';
 import { STATE_ABBREV } from '../sim/types.ts';
 
 export function sheetVisibleFields(
@@ -21,7 +21,11 @@ export function sheetVisibleFields(
       showProbabilities: false,
       showDecisionLog: false,
       showPartyOrder: false,
-      healthLabel: healthBucket(actor.hp, actor.hpMax),
+      healthLabel: conditionOf(
+        actor.hp,
+        actor.hpMax,
+        actor.lastCondition as ConditionLabel | null,
+      ),
       behaviorLabel: STATE_ABBREV[actor.observedBehavior],
     };
   }

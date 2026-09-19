@@ -1,6 +1,11 @@
 import triggers from '../data/triggers.json';
 import { actorUsesDecide } from '../sim/actor.ts';
-import { healthBucket, howCloseBucket } from '../sim/buckets.ts';
+import {
+  conditionOf,
+  howCloseBucket,
+  survivableHitsCount,
+  type ConditionLabel,
+} from '../sim/buckets.ts';
 import type {
   AbilityId,
   Actor,
@@ -11,7 +16,7 @@ import type {
 import { DT } from '../sim/types.ts';
 import type { World } from '../sim/world.ts';
 import { gapTo, nearestHostile, recordDecision } from '../sim/world.ts';
-import { buildDigest } from './digest.ts';
+import { buildDigest, worstIncomingHit } from './digest.ts';
 import { callDecide, DecideError, degradedReasonFromResponse } from './jev.ts';
 import { offlineDecide } from './offlinePolicy.ts';
 import { buildQuestions } from './questions.ts';
@@ -115,25 +120,33 @@ function evaluateTriggers(world: World, actor: Actor): void {
   if (!trig) return;
 
   const enemy = nearestHostile(world, actor);
-  const hpFrac = actor.hp / actor.hpMax;
+  const condition = conditionOf(
+    actor.hp,
+    actor.hpMax,
+    actor.lastCondition as ConditionLabel | null,
+  );
+  const hits = survivableHitsCount(actor.hp, worstIncomingHit(world, actor));
 
+  // Retreat urgency: next incoming hit would kill (not a raw HP %)
   if (
-    trig.retreatOnHealthFraction > 0 &&
-    hpFrac <= trig.retreatOnHealthFraction &&
+    hits === 1 &&
     world.encounter.allowedStates.includes('retreat') &&
     actor.state !== 'retreat'
   ) {
-    // Prefer early call over forced state (still rate-limited)
+    requestImmediateDecision(world, actor);
+  }
+
+  if (condition !== actor.lastCondition || hits !== actor.lastSurvivableHits) {
+    actor.lastCondition = condition;
+    actor.lastSurvivableHits = hits;
     requestImmediateDecision(world, actor);
   }
 
   if (enemy) {
     const gap = gapTo(actor, enemy);
     const close = howCloseBucket(gap);
-    const health = healthBucket(actor.hp, actor.hpMax);
-    if (close !== actor.lastHowCloseBucket || health !== actor.lastHealthBucket) {
+    if (close !== actor.lastHowCloseBucket) {
       actor.lastHowCloseBucket = close;
-      actor.lastHealthBucket = health;
       requestImmediateDecision(world, actor);
     }
     if (

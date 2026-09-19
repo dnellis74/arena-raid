@@ -1,12 +1,17 @@
 import { actorUsesDecide } from '../sim/actor.ts';
-import { buildDigest } from './digest.ts';
+import { buildDigest, worstIncomingHit } from './digest.ts';
 import { offlineDecide } from './offlinePolicy.ts';
 import type { Actor, DecisionEntry } from '../sim/types.ts';
 import { DT } from '../sim/types.ts';
 import type { World } from '../sim/world.ts';
 import { nearestHostile, recordDecision } from '../sim/world.ts';
 import { stepWorld } from '../sim/step.ts';
-import { healthBucket, howCloseBucket } from '../sim/buckets.ts';
+import {
+  conditionOf,
+  howCloseBucket,
+  survivableHitsCount,
+  type ConditionLabel,
+} from '../sim/buckets.ts';
 import { gapTo } from '../sim/world.ts';
 import triggers from '../data/triggers.json';
 import { BASE_INTERVAL_S, HARD_FLOOR_S } from './decide.ts';
@@ -68,29 +73,37 @@ function evaluateTriggersSync(world: World, actor: Actor): void {
   )[actor.kind];
   if (!trig) return;
   const enemy = nearestHostile(world, actor);
+  const floorOk = (world.tick - actor.lastDecisionTick) * DT >= HARD_FLOOR_S;
+
+  const condition = conditionOf(
+    actor.hp,
+    actor.hpMax,
+    actor.lastCondition as ConditionLabel | null,
+  );
+  const hits = survivableHitsCount(actor.hp, worstIncomingHit(world, actor));
+
+  if (hits === 1 && world.encounter.allowedStates.includes('retreat') && floorOk) {
+    decideOfflineSync(world, actor);
+  }
+
+  if (condition !== actor.lastCondition || hits !== actor.lastSurvivableHits) {
+    actor.lastCondition = condition;
+    actor.lastSurvivableHits = hits;
+    if (floorOk) decideOfflineSync(world, actor);
+  }
+
   if (!enemy) return;
   const gap = gapTo(actor, enemy);
   const close = howCloseBucket(gap);
-  const health = healthBucket(actor.hp, actor.hpMax);
-  const floorOk = (world.tick - actor.lastDecisionTick) * DT >= HARD_FLOOR_S;
 
-  if (close !== actor.lastHowCloseBucket || health !== actor.lastHealthBucket) {
+  if (close !== actor.lastHowCloseBucket) {
     actor.lastHowCloseBucket = close;
-    actor.lastHealthBucket = health;
     if (floorOk) decideOfflineSync(world, actor);
   }
   if (
     trig.requestOnContactWhileHolding &&
     actor.state === 'hold_and_shoot' &&
     gap <= 1.4 &&
-    floorOk
-  ) {
-    decideOfflineSync(world, actor);
-  }
-  if (
-    trig.retreatOnHealthFraction > 0 &&
-    actor.hp / actor.hpMax <= trig.retreatOnHealthFraction &&
-    world.encounter.allowedStates.includes('retreat') &&
     floorOk
   ) {
     decideOfflineSync(world, actor);

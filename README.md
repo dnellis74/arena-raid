@@ -52,4 +52,7 @@ Hits live Jev, costs tokens, requires `TYPESAFE_API_KEY`, and is **not** part of
 | `src/render/` | Canvas draw |
 | `src/data/` | Classes, abilities, states, bands (criteria strings) |
 
-Player digests are slim (role, abilities, orders; enemy kind only) so Jev follows the standing order rather than situation-steering. See `buildDigest` in `src/net/digest.ts`.
+Player digests include role, abilities, orders, plus health/lethality
+(`condition`, `survivable_hits`, enemy `hits_to_finish`) but omit danger
+framing (`how_close`, `about_to_attack`, `room_to_back_away`). See
+`buildDigest` in `src/net/digest.ts`.

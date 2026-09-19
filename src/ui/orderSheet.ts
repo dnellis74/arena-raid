@@ -32,6 +32,7 @@ export function createOrderSheet(root: HTMLElement): {
   showParty: (partyOrder: string | null) => void;
   hide: () => void;
   onSubmit: (cb: (text: string, scope: 'actor' | 'party') => void) => void;
+  onClear: (cb: (scope: 'actor' | 'party') => void) => void;
   onClose: (cb: () => void) => void;
   onPartyButton: (cb: () => void) => void;
 } {
@@ -78,6 +79,19 @@ export function createOrderSheet(root: HTMLElement): {
   send.type = 'button';
   send.style.cssText = buttonStyle() + 'min-height:44px;background:#7c3aed;';
 
+  const clearLink = document.createElement('button');
+  clearLink.textContent = 'clear';
+  clearLink.type = 'button';
+  clearLink.setAttribute('aria-label', 'Clear order');
+  clearLink.style.cssText = `
+    background: none; border: none; color: #64748b; font: inherit;
+    font-size: 12px; cursor: pointer; padding: 8px 4px; text-decoration: underline;
+  `;
+
+  const promptRow = document.createElement('div');
+  promptRow.style.cssText = 'display:flex;align-items:center;gap:12px;';
+  promptRow.append(send, clearLink);
+
   const header = document.createElement('div');
   header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;';
   const title = document.createElement('div');
@@ -104,13 +118,14 @@ export function createOrderSheet(root: HTMLElement): {
 
   debugPanel.append(meta, ordersView, bars, log);
 
-  // Prompt + send first; name/close and debug chrome below
-  sheet.append(input, send, header, debugPanel);
+  // Prompt + send/clear first; name/close and debug chrome below
+  sheet.append(input, promptRow, header, debugPanel);
   wrap.append(controlBar, sheet);
   root.appendChild(wrap);
 
   let scope: 'actor' | 'party' = 'actor';
   let submitCb: ((text: string, scope: 'actor' | 'party') => void) | null = null;
+  let clearCb: ((scope: 'actor' | 'party') => void) | null = null;
   let closeCb: (() => void) | null = null;
   let partyCb: (() => void) | null = null;
   let lastSyncedKey: string | null = null;
@@ -136,10 +151,17 @@ export function createOrderSheet(root: HTMLElement): {
     submitCb(text, scope);
   }
 
+  function clearCurrent(): void {
+    submitTextLatch = null;
+    input.value = '';
+    clearCb?.(scope);
+  }
+
   send.addEventListener('pointerdown', () => {
     submitTextLatch = input.value;
   });
   send.addEventListener('click', () => submitCurrent());
+  clearLink.addEventListener('click', () => clearCurrent());
   closeBtn.addEventListener('click', () => closeCb?.());
   partyBtn.addEventListener('click', () => partyCb?.());
 
@@ -155,7 +177,7 @@ export function createOrderSheet(root: HTMLElement): {
 
       const canOrder = actor.side === 'player' || debug;
       input.style.display = canOrder ? 'block' : 'none';
-      send.style.display = canOrder ? 'block' : 'none';
+      promptRow.style.display = canOrder ? 'flex' : 'none';
       if (canOrder) {
         const key = `actor:${actor.id}`;
         const isNew = key !== lastSyncedKey;
@@ -208,7 +230,7 @@ export function createOrderSheet(root: HTMLElement): {
       title.textContent = 'Party order';
       debugPanel.style.display = 'none';
       input.style.display = 'block';
-      send.style.display = 'block';
+      promptRow.style.display = 'flex';
       const isNew = lastSyncedKey !== 'party';
       syncInput('party', partyOrder);
       input.setAttribute('aria-label', 'Party order');
@@ -222,6 +244,9 @@ export function createOrderSheet(root: HTMLElement): {
     },
     onSubmit(cb) {
       submitCb = cb;
+    },
+    onClear(cb) {
+      clearCb = cb;
     },
     onClose(cb) {
       closeCb = cb;

@@ -120,7 +120,10 @@ export interface Actor {
   deciding: boolean;
   lastDecisionTick: number;
   lastStateChangeTick: number;
-  lastHealthBucket: string;
+  /** Previous condition band for Schmitt-trigger hysteresis. */
+  lastCondition: string;
+  /** Previous survivable-hit count (null = omitted / no living hostile). */
+  lastSurvivableHits: number | null;
   lastHowCloseBucket: string;
   forceRetargetUntil: number;
   forceRetargetTo: ActorId | null;
@@ -138,7 +141,7 @@ export interface Encounter {
 }
 
 export const ARENA_W = 16;
-export const ARENA_H = 28;
+export const ARENA_H = 25;
 export const DT = 1 / 60;
 export const PUCK_RADIUS = 0.5;
 

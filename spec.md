@@ -160,7 +160,8 @@ make that possible: `sim/` has no imports from `render/`, `ui/`, or `net/`, so t
 whole fight runs headless. Worth automated tests:
 
 - the sim: movement, collision, ability resolve, death, determinism under a fixed seed
-- `buckets.ts`: geometry and health to named buckets, including boundary values
+- `buckets.ts`: geometry and condition/lethality to named buckets, including
+  boundary values and Schmitt-trigger hysteresis
 - `digest.ts`: the state object sent to Jev, asserting no numbers leak into it and
   no enemy order appears in a player actor's digest
 - the reference fight, both cases, end to end and headless
@@ -179,9 +180,9 @@ the issue rather than building a harness to catch it.
 ### Units and coordinates
 
 - 1 unit = roughly 1 meter. Origin at arena top-left, +x right, +y down
-- Arena: `16 x 28` units (portrait, phone-first)
+- Arena: `16 x 25` units (portrait, phone-first; width × height)
 - Puck radius: `0.5` units for all actors in v0.1
-- Render scale: `scale = min(canvasW / 16, canvasH / 28)`, letterbox the remainder
+- Render scale: `scale = min(canvasW / 16, canvasH / 25)`, letterbox the remainder
 
 ### Simulation loop
 
@@ -483,7 +484,8 @@ State sent:
 {
   "character": {
     "role": "a spellcaster who attacks from a distance and is weak in close combat",
-    "health": "unhurt",
+    "condition": "bloodied",
+    "survivable_hits": "two more hits would kill this character",
     "current_behavior": "standing still and shooting",
     "ready_abilities": [
       "Arc Bolt: a weak attack that can be fired from a long way off"
@@ -497,7 +499,8 @@ State sent:
   },
   "enemy": {
     "kind": "goblin",
-    "health": "lightly wounded",
+    "condition": "scratched",
+    "hits_to_finish": "it will take several more hits to kill",
     "how_close": "almost within reach",
     "moving_toward_the_character": true,
     "reach": "can only attack from close enough to touch",
@@ -512,14 +515,19 @@ hands to the model that a code merge would have settled: when the two orders
 disagree, Jev decides. Omit either field entirely when it is empty rather than
 sending an empty string. Put a conflicting pair in the golden tests (section 13).
 
-Bucketing rules, all computed in code:
+Bucketing rules, all computed in code. Percentage alone is not enough for
+retreat — send `condition` plus lethality phrases. Nothing numeric in the digest.
 
-| Field | Buckets |
+| Field | Buckets / phrases |
 |---|---|
-| `health` | unhurt (>85%), lightly wounded (>60%), wounded (>35%), badly wounded (>15%), near death |
+| `condition` | untouched (>85%), scratched (60–85%), bloodied (35–60%), badly hurt (15–35%), at death's door (≤15%). Schmitt-trigger hysteresis (±4pt exit bands) keeps the previous label on the actor for deterministic replays |
+| `survivable_hits` | on character: `ceil(hp / worstIncomingHit)` where worstIncomingHit is the highest single-hit damage among **living hostiles on the field**. Phrases: 1 → "the next hit will kill this character"; 2 → "two more hits would kill this character"; 3 → "three more hits would kill this character"; 4+ → "can take several more hits". Omit when no living hostile |
+| `hits_to_finish` | on enemy: `ceil(enemy.hp / bestReadyAttackDamage)` using the actor's highest-damage **ready** ability. Phrases: 1 → "one more hit will kill it"; 2 → "two more hits will kill it"; 3 → "three more hits will kill it"; 4+ → "it will take several more hits to kill" |
 | `how_close` | within reach, almost within reach, a short run away, a long way off, across the arena |
 | `room_to_back_away` | open, limited, cornered (from wall distance along the away vector) |
 | `about_to_attack` | true if the enemy is mid-windup |
+
+`condition` replaces the old single `health` key on both character and enemy.
 
 Questions, one call:
 
@@ -604,7 +612,8 @@ Conditions code evaluates every tick with no network call. Fixed per role in
 `data/triggers.json`, not derived from any order. This is what gives an actor a
 fast reaction time despite a multi-second decision cadence:
 
-- health at or below the role's retreat threshold and `retreat` is allowed: switch to `retreat`
+- `survivable_hits` resolves to the one-hit phrase (next hit kills) and `retreat`
+  is allowed: request a decision immediately (prefer early call over forced state)
 - current target dead: clear target, request a decision immediately
 - enemy inside contact range while the actor is in `hold_and_shoot`: request a
   decision immediately rather than waiting out the interval
@@ -616,8 +625,9 @@ those is a place the player's prompt stops mattering.
 ### 10.4 Cadence
 
 - Base interval 2.0s per actor, actors staggered evenly across the interval
-- Additionally on material events: target dies, health bucket changes, a new order
-  is submitted, `how_close` bucket changes
+- Additionally on material events: target dies, `condition` band changes,
+  `survivable_hits` phrase/count changes, a new order is submitted, `how_close`
+  bucket changes
 - Hard floor of 0.75s between calls for the same actor
 - Timeout 1200ms, then keep the current behavior. Discard any response more than
   one interval stale
@@ -857,7 +867,7 @@ to be prompted well rather than merely prompted.
       skirmish.ts
       retreat.ts
     steering.ts           intent + separation + wall repulsion
-    buckets.ts            geometry and health -> named buckets. NO model calls here
+    buckets.ts            geometry and condition/lethality -> named buckets. NO model calls here
   data/
     classes.json          4 archetypes, 4 abilities each, with blurbs
     abilities.json
@@ -910,8 +920,9 @@ Split by who checks them, per the working practices in section 4.
 - [ ] Arcanist and Goblin spawn, move, collide, attack, die
 - [ ] All four behaviors reachable and correct against synthetic answer sets
 - [ ] Case A reproduces as a loss and Case B as a win, headless
-- [ ] No coordinate, hit point total, or unit distance appears anywhere in a
-      request body sent to Jev
+- [ ] No coordinate, hit point total, HP percentage, or unit distance appears
+      anywhere in a request body sent to Jev (condition / survivable_hits /
+      hits_to_finish phrases only — never raw HP or %)
 - [ ] A player actor's digest never contains an enemy order, and the reverse
 - [ ] Behavior does not thrash: no more than 4 behavior switches in the Case B fight
 - [ ] With the backend stubbed to fail, the fight still completes on role defaults

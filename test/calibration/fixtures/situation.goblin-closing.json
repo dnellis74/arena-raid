@@ -1,6 +1,8 @@
 {
   "character": {
     "role": "a spellcaster who attacks from a distance and is weak in close combat",
+    "condition": "untouched",
+    "survivable_hits": "can take several more hits",
     "current_behavior": "standing still and shooting",
     "ready_abilities": [
       "Arc Bolt: a weak attack that can be fired from a long way off",
@@ -11,6 +13,8 @@
     "unavailable_abilities": []
   },
   "enemy": {
-    "kind": "goblin"
+    "kind": "goblin",
+    "condition": "untouched",
+    "hits_to_finish": "it will take several more hits to kill"
   }
 }

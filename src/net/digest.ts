@@ -1,12 +1,17 @@
 import { getAbility } from '../sim/actor.ts';
 import {
-  healthBucket,
+  conditionOf,
+  hitsToFinishCount,
+  hitsToFinishPhrase,
   howCloseBucket,
   roomToBackAway,
+  survivableHitsCount,
+  survivableHitsPhrase,
+  type ConditionLabel,
 } from '../sim/buckets.ts';
 import type { Actor, StateId } from '../sim/types.ts';
 import type { World } from '../sim/world.ts';
-import { gapTo, nearestHostile } from '../sim/world.ts';
+import { gapTo, hostiles, nearestHostile } from '../sim/world.ts';
 
 const BEHAVIOR_LABEL: Record<StateId, string> = {
   hold_and_shoot: 'standing still and shooting',
@@ -15,10 +20,11 @@ const BEHAVIOR_LABEL: Record<StateId, string> = {
   retreat: 'running away',
 };
 
-/** Enemy situation block — full for AI; slim (kind only) for player-controlled. */
+/** Enemy situation block — full for AI; kind + lethality for player. */
 export interface DigestEnemy {
   kind: string;
-  health?: string;
+  condition?: string;
+  hits_to_finish?: string;
   how_close?: string;
   moving_toward_the_character?: boolean;
   reach?: string;
@@ -28,12 +34,13 @@ export interface DigestEnemy {
 export interface DecideDigest {
   character: {
     role: string;
-    /** Omitted for player-controlled: health urgency steers Jev off orders. */
-    health?: string;
+    condition?: string;
+    /** Omitted when no living hostile can deal damage. */
+    survivable_hits?: string;
     current_behavior: string;
     ready_abilities: string[];
     unavailable_abilities: string[];
-    /** Omitted for player-controlled. */
+    /** Omitted for player-controlled (danger/room framing). */
     room_to_back_away?: string;
   };
   orders?: {
@@ -43,11 +50,44 @@ export interface DecideDigest {
   enemy: DigestEnemy;
 }
 
+/** Highest single-hit damage among living hostiles' abilities (any CD). */
+export function worstIncomingHit(world: World, actor: Actor): number | null {
+  let best = 0;
+  for (const h of hostiles(world, actor)) {
+    for (const id of h.abilities) {
+      const d = getAbility(id).damage ?? 0;
+      if (d > best) best = d;
+    }
+  }
+  return best > 0 ? best : null;
+}
+
+/** Highest damage among this actor's ready (cooldown ≤ 0) abilities. */
+export function bestReadyAttackDamage(actor: Actor): number | null {
+  let best = 0;
+  for (const id of actor.abilities) {
+    if ((actor.cooldowns[id] ?? 0) > 0) continue;
+    const d = getAbility(id).damage ?? 0;
+    if (d > best) best = d;
+  }
+  return best > 0 ? best : null;
+}
+
+function nextCondition(actor: Actor): ConditionLabel {
+  const label = conditionOf(
+    actor.hp,
+    actor.hpMax,
+    (actor.lastCondition as ConditionLabel) || null,
+  );
+  actor.lastCondition = label;
+  return label;
+}
+
 /**
  * Build Jev state for one actor. Never includes opposing orders or raw numbers.
  *
- * Player-controlled digests are prompt-first: orders + role/abilities, without
- * danger/situation framing that encourages disobeying standing orders.
+ * Player digests include condition + lethality (survivable_hits / hits_to_finish)
+ * but omit danger framing (how_close, about_to_attack, room_to_back_away).
  * Enemy/AI digests keep the full situational picture for autonomous decisions.
  *
  * When `actor.standingOrder` is non-empty, it MUST appear as
@@ -66,17 +106,32 @@ export function buildDigest(world: World, actor: Actor): DecideDigest {
   }
 
   const playerControlled = actor.side === 'player';
+  const condition = nextCondition(actor);
+  const worst = worstIncomingHit(world, actor);
+  const hits = survivableHitsCount(actor.hp, worst);
+  actor.lastSurvivableHits = hits;
+  const survivable =
+    hits !== null ? { survivable_hits: survivableHitsPhrase(hits) } : {};
+
+  const enemyCondition = enemy ? nextCondition(enemy) : undefined;
+  const finish =
+    enemy !== null
+      ? hitsToFinishCount(enemy.hp, bestReadyAttackDamage(actor))
+      : null;
+  const finishField =
+    finish !== null ? { hits_to_finish: hitsToFinishPhrase(finish) } : {};
 
   const digest: DecideDigest = {
     character: {
       role: actor.role,
+      condition,
+      ...survivable,
       current_behavior: BEHAVIOR_LABEL[actor.state],
       ready_abilities: ready,
       unavailable_abilities: unavailable,
       ...(playerControlled
         ? {}
         : {
-            health: healthBucket(actor.hp, actor.hpMax),
             room_to_back_away: enemy
               ? roomToBackAway(
                   actor.pos,
@@ -88,11 +143,18 @@ export function buildDigest(world: World, actor: Actor): DecideDigest {
           }),
     },
     enemy: playerControlled
-      ? { kind: enemy?.kind ?? 'none' }
+      ? enemy
+        ? {
+            kind: enemy.kind,
+            condition: enemyCondition,
+            ...finishField,
+          }
+        : { kind: 'none' }
       : enemy
         ? {
             kind: enemy.kind,
-            health: healthBucket(enemy.hp, enemy.hpMax),
+            condition: enemyCondition,
+            ...finishField,
             how_close: howCloseBucket(gapTo(actor, enemy)),
             moving_toward_the_character: isMovingToward(enemy, actor),
             reach: 'can only attack from close enough to touch',
@@ -100,7 +162,7 @@ export function buildDigest(world: World, actor: Actor): DecideDigest {
           }
         : {
             kind: 'none',
-            health: 'unhurt',
+            condition: 'untouched',
             how_close: 'across the arena',
             moving_toward_the_character: false,
             reach: 'unknown',
@@ -132,6 +194,10 @@ function isMovingToward(mover: Actor, toward: Actor): boolean {
 /** Assert helpers for tests: no numeric coordinates/HP/distances leak. */
 export function assertDigestClean(digest: DecideDigest): void {
   walkNoNumbers(digest);
+  const json = JSON.stringify(digest);
+  if (/%/.test(json) || /\b\d+(\.\d+)?%\b/.test(json)) {
+    throw new Error(`HP percentage leaked into digest: ${json}`);
+  }
 }
 
 function walkNoNumbers(value: unknown, path = ''): void {

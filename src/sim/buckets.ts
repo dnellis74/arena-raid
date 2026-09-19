@@ -3,12 +3,16 @@ import type { RangeBandId, Vec2 } from './types.ts';
 import { ARENA_H, ARENA_W } from './types.ts';
 import { clamp, dist, len, norm, sub } from './vec.ts';
 
-export type HealthBucket =
-  | 'unhurt'
-  | 'lightly wounded'
-  | 'wounded'
-  | 'badly wounded'
-  | 'near death';
+/** Condition labels — no shared word stems across bands. */
+export const CONDITION_BANDS = [
+  { label: 'untouched' as const, enterAbove: 0.85, exitBelow: 0.81 },
+  { label: 'scratched' as const, enterAbove: 0.6, exitBelow: 0.56 },
+  { label: 'bloodied' as const, enterAbove: 0.35, exitBelow: 0.31 },
+  { label: 'badly hurt' as const, enterAbove: 0.15, exitBelow: 0.11 },
+  { label: "at death's door" as const, enterAbove: 0, exitBelow: 0 },
+] as const;
+
+export type ConditionLabel = (typeof CONDITION_BANDS)[number]['label'];
 
 export type HowCloseBucket =
   | 'within reach'
@@ -19,13 +23,71 @@ export type HowCloseBucket =
 
 export type RoomBucket = 'open' | 'limited' | 'cornered';
 
-export function healthBucket(hp: number, hpMax: number): HealthBucket {
+/** Open-loop (no hysteresis) band from HP fraction. */
+export function conditionFromFraction(f: number): ConditionLabel {
+  if (f > 0.85) return 'untouched';
+  if (f > 0.6) return 'scratched';
+  if (f > 0.35) return 'bloodied';
+  if (f > 0.15) return 'badly hurt';
+  return "at death's door";
+}
+
+/**
+ * Schmitt-trigger condition band. Keep `previous` on the actor for
+ * deterministic replays; rising and falling disagree inside the 4pt gap.
+ */
+export function conditionOf(
+  hp: number,
+  hpMax: number,
+  previous: ConditionLabel | null,
+): ConditionLabel {
   const f = hpMax <= 0 ? 0 : hp / hpMax;
-  if (f > 0.85) return 'unhurt';
-  if (f > 0.6) return 'lightly wounded';
-  if (f > 0.35) return 'wounded';
-  if (f > 0.15) return 'badly wounded';
-  return 'near death';
+  if (previous === null) return conditionFromFraction(f);
+
+  const prevIdx = CONDITION_BANDS.findIndex((b) => b.label === previous);
+  if (prevIdx < 0) return conditionFromFraction(f);
+
+  // Rising: promote only after clearing a healthier band's enterAbove
+  for (let i = 0; i < prevIdx; i++) {
+    if (f > CONDITION_BANDS[i]!.enterAbove) return CONDITION_BANDS[i]!.label;
+  }
+
+  // Falling: hold previous until below its exitBelow
+  if (f > CONDITION_BANDS[prevIdx]!.exitBelow) return previous;
+
+  return conditionFromFraction(f);
+}
+
+/** ceil(hp / worstIncomingHit); omit when no living hostile damage. */
+export function survivableHitsCount(
+  hp: number,
+  worstIncomingHit: number | null,
+): number | null {
+  if (worstIncomingHit === null || worstIncomingHit <= 0) return null;
+  return Math.ceil(hp / worstIncomingHit);
+}
+
+export function survivableHitsPhrase(hits: number): string {
+  if (hits <= 1) return 'the next hit will kill this character';
+  if (hits === 2) return 'two more hits would kill this character';
+  if (hits === 3) return 'three more hits would kill this character';
+  return 'can take several more hits';
+}
+
+/** ceil(enemyHp / bestReadyAttackDamage). */
+export function hitsToFinishCount(
+  enemyHp: number,
+  bestReadyAttackDamage: number | null,
+): number | null {
+  if (bestReadyAttackDamage === null || bestReadyAttackDamage <= 0) return null;
+  return Math.ceil(enemyHp / bestReadyAttackDamage);
+}
+
+export function hitsToFinishPhrase(hits: number): string {
+  if (hits <= 1) return 'one more hit will kill it';
+  if (hits === 2) return 'two more hits will kill it';
+  if (hits === 3) return 'three more hits will kill it';
+  return 'it will take several more hits to kill';
 }
 
 /** Gap = center distance minus both radii (edge-to-edge). */

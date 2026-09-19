@@ -1,21 +1,32 @@
-# Skirmish calibration
+# Calibration suites
 
-Live Jev suite that checks whether standing-order wording maps to **adopted** `skirmish` behavior — criteria text and hysteresis together, not raw Choice labels alone.
+Live Jev suites excluded from `npm test` / Vitest (`vite.config.ts` →
+`exclude: ['test/calibration/**']`).
 
-Entry point: `skirmish.calibration.ts` via `npm run calibrate:skirmish`.
+| Script | Entry | Purpose |
+|--------|-------|---------|
+| `npm run calibrate:skirmish` | `skirmish.calibration.ts` | Standing-order wording → adopted `skirmish` |
+| `npm run calibrate:health` | `health.calibration.ts` | Fixed order; step `condition` + `survivable_hits` ladder |
 
 ## Why not `npm test`
 
 - Calls live Jev (tokens, network, non-deterministic).
-- Excluded from Vitest (`vite.config.ts` → `exclude: ['test/calibration/**']`).
 - Not meant for CI watch / unit-test loops.
 
-Unit coverage that *is* in `npm test`: the goblin-closing fixture lock (`test/digest.goblin-closing.spec.ts`).
+Unit coverage that *is* in `npm test`: the goblin-closing fixture lock
+(`test/digest.goblin-closing.spec.ts`) and `test/buckets.spec.ts`
+(condition hysteresis + lethality phrases).
 
 ## Prerequisites
 
-1. `TYPESAFE_API_KEY` in the environment or `.env` (script loads `--env-file=.env`).
-2. Free port / quiet Vite: the runner kills whatever is on **5173** and Vite processes before calling Jev.
+1. `TYPESAFE_API_KEY` in the environment or `.env` (scripts load `--env-file=.env`).
+2. Free port / quiet Vite: runners kill whatever is on **5173** and Vite processes before calling Jev.
+
+---
+
+# Skirmish calibration
+
+Entry point: `skirmish.calibration.ts` via `npm run calibrate:skirmish`.
 
 ## How to run
 
@@ -48,7 +59,9 @@ Low-confidence skirmish labels that leave the actor in `hold_and_shoot` fail tie
 
 Situation: Case A reference fight with the goblin **a short run away** (edge gap ≈ 4u). Built by `createGoblinClosingWorld` / `buildGoblinClosingDigest` in `situation.ts`.
 
-The JSON fixture matches the current **slim player** digest from `buildDigest` (character role/abilities/behavior; enemy `kind` only; no orders — orders are injected per case).
+The JSON fixture matches the current **player** digest from `buildDigest`
+(character role/abilities/behavior + `condition` / `survivable_hits`; enemy
+`kind` + `condition` / `hits_to_finish`; no orders — orders are injected per case).
 
 Lock test (`npm test`):
 
@@ -86,3 +99,34 @@ Each run writes `snapshots/skirmish.<ISO>.json` (probabilities, confidence, raw 
 |------|---------|
 | `0` | Tier 1 and negatives all PASS (tier 2 ignored for exit) |
 | `1` | Missing `TYPESAFE_API_KEY`, thrown error, or any tier-1 / negative `FAIL` |
+
+---
+
+# Health ladder calibration
+
+Entry point: `health.calibration.ts` via `npm run calibrate:health`.
+
+Fixed standing order: **`keep your distance and shoot`**. Situation locked to the
+goblin-closing fixture; only `condition` and `survivable_hits` step through five
+rungs (matching lethality phrases).
+
+| Rung | condition | survivable_hits | Gate |
+|------|-----------|-----------------|------|
+| H1 | untouched | can take several more hits | tier 1 → `skirmish` |
+| H2 | scratched | three more hits… | observed |
+| H3 | bloodied | two more hits… | observed |
+| H4 | badly hurt | two more hits… | observed |
+| H5 | at death's door | the next hit will kill… | tier 1 → `retreat` |
+
+Reports:
+
+- `P(retreat)` across the five rungs (expect rising — soft report, not a hard fail).
+- Snapshot under `snapshots/health.<ISO>.json`.
+- Ablation pass with `survivable_hits` omitted; console notes whether the curve
+  moved (if barely, the amendment may buy little for this order).
+
+```bash
+npm run calibrate:health
+```
+
+Exit `1` only on missing key, thrown errors, or H1/H5 tier-1 failures.

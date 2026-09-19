@@ -3,7 +3,7 @@ import { createReferenceFight } from '../src/sim/world.ts';
 import { stepWorld, runTicks } from '../src/sim/step.ts';
 import { DT } from '../src/sim/types.ts';
 import { mulberry32 } from '../src/sim/rng.ts';
-import { healthBucket, howCloseBucket, bandToUnits, roomToBackAway } from '../src/sim/buckets.ts';
+import { howCloseBucket, bandToUnits, roomToBackAway } from '../src/sim/buckets.ts';
 import { applySyntheticAnswers, setForceOffline, requestImmediateDecision } from '../src/net/decide.ts';
 import { runHeadlessOffline, decideOfflineSync, tickOfflineDecisions } from '../src/net/headless.ts';
 import { buildDigest, assertDigestClean } from '../src/net/digest.ts';
@@ -16,19 +16,6 @@ import {
 } from '../src/ui/orderSheet.ts';
 
 describe('buckets', () => {
-  it('maps health fractions to named buckets including boundaries', () => {
-    expect(healthBucket(100, 100)).toBe('unhurt');
-    expect(healthBucket(86, 100)).toBe('unhurt');
-    expect(healthBucket(85, 100)).toBe('lightly wounded');
-    expect(healthBucket(61, 100)).toBe('lightly wounded');
-    expect(healthBucket(60, 100)).toBe('wounded');
-    expect(healthBucket(36, 100)).toBe('wounded');
-    expect(healthBucket(35, 100)).toBe('badly wounded');
-    expect(healthBucket(16, 100)).toBe('badly wounded');
-    expect(healthBucket(15, 100)).toBe('near death');
-    expect(healthBucket(1, 100)).toBe('near death');
-  });
-
   it('maps gap to how_close buckets', () => {
     expect(howCloseBucket(0)).toBe('within reach');
     expect(howCloseBucket(1.4)).toBe('within reach');
@@ -225,13 +212,16 @@ describe('digest fog of war and no numbers', () => {
     expect(JSON.stringify(digest)).not.toContain('SECRET_PLAYER_ORDER_XYZ');
   });
 
-  it('player digest omits danger/situation pressure fields', () => {
+  it('player digest includes condition + lethality but omits danger framing', () => {
     const w = createReferenceFight(1);
     const p = w.actors.find((a) => a.side === 'player')!;
     p.standingOrder = 'keep your distance and shoot';
     const digest = buildDigest(w, p);
-    expect(digest.character.health).toBeUndefined();
+    expect(digest.character.condition).toBe('untouched');
+    expect(digest.character.survivable_hits).toBe('can take several more hits');
     expect(digest.character.room_to_back_away).toBeUndefined();
+    expect(digest.enemy.condition).toBeDefined();
+    expect(digest.enemy.hits_to_finish).toBeDefined();
     expect(digest.enemy.how_close).toBeUndefined();
     expect(digest.enemy.moving_toward_the_character).toBeUndefined();
     expect(digest.enemy.about_to_attack).toBeUndefined();
@@ -299,12 +289,13 @@ describe('digest fog of war and no numbers', () => {
     }
   });
 
-  it('enemy digest keeps full situational awareness', () => {
+  it('enemy digest keeps full situational awareness with condition fields', () => {
     const w = createReferenceFight(1);
     const g = w.actors.find((a) => a.side === 'enemy')!;
     const digest = buildDigest(w, g);
-    expect(digest.character.health).toBeDefined();
+    expect(digest.character.condition).toBeDefined();
     expect(digest.character.room_to_back_away).toBeDefined();
+    expect(digest.enemy.condition).toBeDefined();
     expect(digest.enemy.how_close).toBeDefined();
     expect(digest.enemy.moving_toward_the_character).toBeDefined();
     expect(digest.enemy.about_to_attack).toBeDefined();

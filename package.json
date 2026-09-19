@@ -8,7 +8,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "calibrate:skirmish": "tsx --env-file=.env test/calibration/skirmish.calibration.ts"
+    "calibrate:skirmish": "tsx --env-file=.env test/calibration/skirmish.calibration.ts",
+    "calibrate:health": "tsx --env-file=.env test/calibration/health.calibration.ts"
   },
   "keywords": [],
   "author": "",

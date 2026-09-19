@@ -9,7 +9,8 @@ function baseDigest(over: Partial<DecideDigest> = {}): DecideDigest {
   return {
     character: {
       role: 'a spellcaster who attacks from a distance and is weak in close combat',
-      health: 'unhurt',
+      condition: 'untouched',
+      survivable_hits: 'can take several more hits',
       current_behavior: 'standing still and shooting',
       ready_abilities: ['Arc Bolt: a weak attack that can be fired from a long way off'],
       unavailable_abilities: [],
@@ -19,7 +20,8 @@ function baseDigest(over: Partial<DecideDigest> = {}): DecideDigest {
     orders: over.orders,
     enemy: {
       kind: 'goblin',
-      health: 'unhurt',
+      condition: 'untouched',
+      hits_to_finish: 'it will take several more hits to kill',
       how_close: 'a long way off',
       moving_toward_the_character: true,
       reach: 'can only attack from close enough to touch',
@@ -115,7 +117,12 @@ const cases: GoldenCase[] = [
     id: 'retreat-wounded',
     standingOrder: 'retreat if you must',
     partyOrder: null,
-    situation: { character: { health: 'near death' } as DecideDigest['character'] },
+    situation: {
+      character: {
+        condition: "at death's door",
+        survivable_hits: 'the next hit will kill this character',
+      } as DecideDigest['character'],
+    },
     expectedBehavior: 'retreat',
   },
   {
@@ -182,7 +189,8 @@ const cases: GoldenCase[] = [
     situation: {
       enemy: {
         kind: 'goblin',
-        health: 'unhurt',
+        condition: 'untouched',
+        hits_to_finish: 'it will take several more hits to kill',
         how_close: 'within reach',
         moving_toward_the_character: true,
         reach: 'can only attack from close enough to touch',

@@ -86,10 +86,24 @@ restartBtn.addEventListener('click', () => resetMatch());
 sheet.controlBar.appendChild(restartBtn);
 
 function resetMatch(): void {
+  // Keep prior standing / party orders across Restart / new seed fights.
+  const savedStanding = new Map<string, string>();
+  for (const a of world.actors) {
+    if (a.standingOrder) savedStanding.set(a.id, a.standingOrder);
+  }
+  const savedParty = world.partyOrder;
+
   resetTelemetry();
   resetHudLogClock();
   matchEndPrinted = false;
   world = createReferenceFight(seed);
+
+  if (savedParty) setPartyOrder(world, savedParty);
+  for (const a of world.actors) {
+    const order = savedStanding.get(a.id);
+    if (order !== undefined) a.standingOrder = order;
+  }
+
   selectedId = null;
   sheet.hide();
   timeScale = 1;
@@ -147,6 +161,15 @@ sheet.onSubmit((text, scope) => {
   }
   // Close sheet + clear selection so the sim unpauses (same as Close / re-tap)
   resumeFromSheet();
+});
+sheet.onClear((scope) => {
+  // Empty the prompt + standing/party order in sim; do not decide.
+  if (scope === 'party') {
+    setPartyOrder(world, null);
+  } else if (selectedId) {
+    const actor = getActor(world, selectedId);
+    if (actor) actor.standingOrder = null;
+  }
 });
 
 function resize(): void {

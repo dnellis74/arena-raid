@@ -11,7 +11,11 @@ import type {
   StateParams,
   Vec2,
 } from './types.ts';
-import { healthBucket, howCloseBucket } from './buckets.ts';
+import {
+  conditionOf,
+  howCloseBucket,
+  type ConditionLabel,
+} from './buckets.ts';
 import { zero } from './vec.ts';
 
 export const abilities = abilitiesData as Record<AbilityId, Ability>;
@@ -122,7 +126,8 @@ export function createActor(opts: {
     deciding: false,
     lastDecisionTick: -9999,
     lastStateChangeTick: -9999,
-    lastHealthBucket: healthBucket(def.hp, def.hp),
+    lastCondition: conditionOf(def.hp, def.hp, null),
+    lastSurvivableHits: null,
     lastHowCloseBucket: 'across the arena',
     forceRetargetUntil: 0,
     forceRetargetTo: null,
@@ -155,6 +160,10 @@ export function actorUsesDecide(actor: Actor): boolean {
 }
 
 export function syncBuckets(actor: Actor, gap: number | null): void {
-  actor.lastHealthBucket = healthBucket(actor.hp, actor.hpMax);
+  actor.lastCondition = conditionOf(
+    actor.hp,
+    actor.hpMax,
+    actor.lastCondition as ConditionLabel | null,
+  );
   if (gap !== null) actor.lastHowCloseBucket = howCloseBucket(gap);
 }
