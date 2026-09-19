@@ -294,6 +294,7 @@ describe('offline proxy answers (no API key stub)', () => {
     const behavior = out.answers.behavior as { choice: string };
     expect(behavior.choice).toBe('close_and_attack');
     expect(out.degraded).toBe(true);
+    expect(out.degradedReason).toBe('no_TYPESAFE_API_KEY');
   });
 
   it('keeps arcanist on hold when no order', async () => {

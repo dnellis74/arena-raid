@@ -1,4 +1,5 @@
-import { defineConfig, type Plugin } from 'vitest/config';
+import { defineConfig } from 'vitest/config';
+import { loadEnv, type Plugin } from 'vite';
 import { choice, noul, TypeSafeClient } from '@typesafe-ai/sdk';
 import {
   offlineProxyAnswers,
@@ -6,8 +7,11 @@ import {
   type ProxyQuestion,
 } from './src/net/offlineProxyAnswers.ts';
 
-/** Local /api/decide during `vite` — mirrors the Vercel function. */
-function decideApiPlugin(): Plugin {
+/**
+ * Local /api/decide during `vite` — mirrors the Vercel function.
+ * Key must come from loadEnv(.env); Vite does not put non-VITE_ vars into process.env.
+ */
+function decideApiPlugin(apiKey: string | undefined): Plugin {
   return {
     name: 'decide-api',
     configureServer(server) {
@@ -22,14 +26,19 @@ function decideApiPlugin(): Plugin {
             model?: string;
           };
 
-          const apiKey = process.env.TYPESAFE_API_KEY;
-          if (!apiKey || !body.questions) {
+          const key = apiKey?.trim();
+          if (!key || !body.questions) {
+            const reason = !key ? 'no_TYPESAFE_API_KEY' : 'missing_questions';
             res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify(offlineProxyAnswers(body.questions ?? {}, body.state)));
+            res.end(
+              JSON.stringify(
+                offlineProxyAnswers(body.questions ?? {}, body.state, { reason }),
+              ),
+            );
             return;
           }
 
-          const client = new TypeSafeClient({ apiKey, timeout: 1200 });
+          const client = new TypeSafeClient({ apiKey: key, timeout: 1200 });
           const questions: Record<string, ReturnType<typeof choice> | ReturnType<typeof noul>> = {};
           for (const [id, q] of Object.entries(body.questions)) {
             if (q.type === 'choice' && 'criteria' in q && q.criteria) {
@@ -56,21 +65,34 @@ function decideApiPlugin(): Plugin {
           );
         } catch (err) {
           console.error('[vite decide]', err);
+          const msg = String(err);
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
-          res.end(JSON.stringify({ ...offlineProxyAnswers({}), error: String(err) }));
+          res.end(
+            JSON.stringify({
+              ...offlineProxyAnswers({}, undefined, { reason: `typesafe_sdk_error: ${msg}` }),
+              error: msg,
+            }),
+          );
         }
       });
     },
   };
 }
 
-export default defineConfig({
-  plugins: [decideApiPlugin()],
-  server: { port: 5173 },
-  test: {
-    environment: 'node',
-    include: ['test/**/*.spec.ts'],
-    exclude: ['test/calibration/**', '**/node_modules/**'],
-  },
+export default defineConfig(({ mode }) => {
+  // Empty prefix: load all keys from .env / .env.local (not only VITE_*).
+  const env = loadEnv(mode, process.cwd(), '');
+  const apiKey = env.TYPESAFE_API_KEY?.trim() || process.env.TYPESAFE_API_KEY?.trim();
+  console.info(`[vite] TYPESAFE_API_KEY ${apiKey ? 'present' : 'missing (offline stub)'}`);
+
+  return {
+    plugins: [decideApiPlugin(apiKey)],
+    server: { port: 5173 },
+    test: {
+      environment: 'node',
+      include: ['test/**/*.spec.ts'],
+      exclude: ['test/calibration/**', '**/node_modules/**'],
+    },
+  };
 });

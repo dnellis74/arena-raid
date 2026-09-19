@@ -92,11 +92,13 @@ function pickAbilityKey(keys: string[]): string {
 export function offlineProxyAnswers(
   questions: Record<string, ProxyQuestion>,
   state?: ProxyDigest,
+  opts?: { reason?: string },
 ): {
   model: 'offline';
   answers: Record<string, unknown>;
   usage: { input_tokens: number; output_tokens: number };
   degraded: true;
+  degradedReason: string;
 } {
   const answers: Record<string, unknown> = {};
   let pickedBehavior: string | undefined;
@@ -136,5 +138,6 @@ export function offlineProxyAnswers(
     answers,
     usage: { input_tokens: 0, output_tokens: 0 },
     degraded: true,
+    degradedReason: opts?.reason ?? 'no_TYPESAFE_API_KEY',
   };
 }

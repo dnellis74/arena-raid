@@ -8,7 +8,7 @@ import {
   renderArena,
   type ViewTransform,
 } from './render/canvas.ts';
-import { createHud } from './render/hud.ts';
+import { createHud, resetHudLogClock } from './render/hud.ts';
 import { createOrderSheet } from './ui/orderSheet.ts';
 import {
   requestImmediateDecision,
@@ -35,7 +35,6 @@ let resumeScale: TimeScale = 1;
 let selectedId: string | null = null;
 let sheetScope: 'actor' | 'party' = 'actor';
 let transform: ViewTransform = computeTransform(300, 400);
-let lastTelemetry: string | null = null;
 let matchEndPrinted = false;
 
 resetTelemetry();
@@ -44,7 +43,7 @@ if (offlineParam) setForceOffline(true);
 let world = createReferenceFight(seed);
 
 const app = document.getElementById('app')!;
-const hud = createHud(app);
+const hud = createHud();
 
 const arenaWrap = document.createElement('div');
 arenaWrap.id = 'arena-wrap';
@@ -88,6 +87,7 @@ sheet.controlBar.appendChild(restartBtn);
 
 function resetMatch(): void {
   resetTelemetry();
+  resetHudLogClock();
   matchEndPrinted = false;
   world = createReferenceFight(seed);
   selectedId = null;
@@ -167,8 +167,7 @@ function frame(now: number): void {
   const wallDt = Math.min(0.1, (now - last) / 1000);
   last = now;
 
-  const line = tickTelemetry(now);
-  if (line) lastTelemetry = line;
+  tickTelemetry(now);
 
   acc += wallDt * timeScale;
   const maxSteps = 5;
@@ -205,7 +204,6 @@ function frame(now: number): void {
     debug,
     p95Warning: session.p95Warning,
     rateLimitWarning: session.rateLimitWarning,
-    lastTelemetry,
   });
 
   if (selectedId && sheetScope === 'actor') {

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { ActorId } from '../sim/types.ts';
 import type { QuestionMap } from './questions.ts';
 import type { DecideDigest } from './digest.ts';
-import { recordSample, setTelemetryMode, type CallSample } from './telemetry.ts';
+import { recordSample, type CallSample } from './telemetry.ts';
 
 const ChoiceAnswerSchema = z.object({
   type: z.literal('choice'),
@@ -26,6 +26,8 @@ const DecideResponseSchema = z.object({
     })
     .optional(),
   degraded: z.boolean().optional(),
+  degradedReason: z.string().optional(),
+  error: z.string().optional(),
 });
 
 export type DecideResponse = z.infer<typeof DecideResponseSchema>;
@@ -77,7 +79,7 @@ export function createJevClient(apiKey: string, opts: { timeoutMs?: number } = {
         usage: response.usage,
       });
       if (!parsed.success) {
-        throw new DecideError('schema', 'schema');
+        throw new DecideError('schema parse failure', 'schema');
       }
       return parsed.data;
     },
@@ -106,33 +108,36 @@ export async function callDecide(
       signal,
     });
 
-    if (res.status === 429) throw new DecideError('rate limited', 'rate_limit');
-    if (!res.ok) throw new DecideError(`http ${res.status}`, 'http');
+    if (res.status === 429) {
+      throw new DecideError(`rate limit 429 ${res.statusText}`.trim(), 'rate_limit');
+    }
+    if (!res.ok) {
+      throw new DecideError(`HTTP ${res.status} ${res.statusText}`.trim(), 'http');
+    }
 
     const json: unknown = await res.json();
     const parsed = DecideResponseSchema.safeParse(json);
-    if (!parsed.success) throw new DecideError('schema', 'schema');
+    if (!parsed.success) throw new DecideError('schema parse failure', 'schema');
 
     inputTokens = parsed.data.usage?.input_tokens ?? 0;
     outputTokens = parsed.data.usage?.output_tokens ?? 0;
     ok = true;
-    if (parsed.data.degraded) setTelemetryMode('degraded');
-    else setTelemetryMode('live');
     return parsed.data;
   } catch (err) {
     if (err instanceof DecideError) {
       errorKind = err.kind;
-    } else if (err instanceof DOMException && err.name === 'AbortError') {
-      errorKind = 'timeout';
-    } else if (err instanceof TypeError) {
-      errorKind = 'connection';
-    } else {
-      errorKind = 'http';
+      throw err;
     }
-    setTelemetryMode('degraded');
-    throw err instanceof DecideError
-      ? err
-      : new DecideError(String(err), errorKind);
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      errorKind = 'timeout';
+      throw new DecideError('timeout/abort', 'timeout');
+    }
+    if (err instanceof TypeError) {
+      errorKind = 'connection';
+      throw new DecideError(`network TypeError: ${err.message}`, 'connection');
+    }
+    errorKind = 'http';
+    throw new DecideError(String(err), errorKind);
   } finally {
     recordSample({
       t: t0,
@@ -145,4 +150,11 @@ export async function callDecide(
       errorKind: ok ? undefined : errorKind,
     });
   }
+}
+
+/** Human-readable reason for a failed/degraded decide response. */
+export function degradedReasonFromResponse(response: DecideResponse): string {
+  if (response.degradedReason) return response.degradedReason;
+  if (response.error) return `typesafe_sdk_error: ${response.error}`;
+  return 'response.body.degraded';
 }

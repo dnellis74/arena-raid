@@ -26,6 +26,10 @@ const samples: CallSample[] = [];
 let windowSamples: CallSample[] = [];
 let lastEmit = 0;
 let mode: 'live' | 'degraded' = 'live';
+/** Last known reason for degraded mode; kept while mode stays degraded. */
+let lastDegradedReason: string | null = null;
+/** Warn once per distinct reason while degraded. */
+let lastWarnedReason: string | null = null;
 
 export const session: SessionTotals = {
   calls: 0,
@@ -38,8 +42,37 @@ export const session: SessionTotals = {
   rateLimitWarning: false,
 };
 
-export function setTelemetryMode(m: 'live' | 'degraded'): void {
-  mode = m;
+export function getTelemetryMode(): 'live' | 'degraded' {
+  return mode;
+}
+
+export function getLastDegradedReason(): string | null {
+  return lastDegradedReason;
+}
+
+/**
+ * Sets backend mode. On degrade: stores reason and warns once per distinct
+ * reason. On live: clears reason (no recovery log).
+ */
+export function setTelemetryMode(
+  m: 'live' | 'degraded',
+  detail: { reason?: string } = {},
+): void {
+  if (m === 'live') {
+    mode = 'live';
+    lastDegradedReason = null;
+    lastWarnedReason = null;
+    return;
+  }
+
+  const reason = detail.reason ?? lastDegradedReason ?? 'unknown';
+  mode = 'degraded';
+  lastDegradedReason = reason;
+
+  if (lastWarnedReason !== reason) {
+    console.warn(`[jev] degraded: ${reason}`);
+    lastWarnedReason = reason;
+  }
 }
 
 export function recordSample(sample: CallSample): void {
@@ -67,6 +100,17 @@ export function tickTelemetry(now = performance.now()): string | null {
   return line;
 }
 
+function formatModeLabel(): string {
+  if (mode !== 'degraded') return `mode ${mode}`;
+  return `mode degraded (${lastDegradedReason ?? 'unknown'})`;
+}
+
+/** Backend label for HUD: includes degraded reason when known. */
+export function formatBackendMode(degraded: boolean): string {
+  if (!degraded && mode !== 'degraded') return 'live';
+  return `DEGRADED (${lastDegradedReason ?? 'unknown'})`;
+}
+
 function emitWindow(now: number): string {
   const n = windowSamples.length;
   const msArr = windowSamples.map((s) => s.ms).sort((a, b) => a - b);
@@ -82,7 +126,7 @@ function emitWindow(now: number): string {
 
   const line =
     `[jev 5s] calls ${n} | ms avg ${Math.round(avg)} p95 ${Math.round(p95)} max ${Math.round(max)}\n` +
-    `         tokens in ${tin.toLocaleString()} out ${tout.toLocaleString()} | in/call ${inPer} | errors ${errs} | mode ${mode}`;
+    `         tokens in ${tin.toLocaleString()} out ${tout.toLocaleString()} | in/call ${inPer} | errors ${errs} | ${formatModeLabel()}`;
 
   console.info(line);
   void now;
@@ -112,4 +156,6 @@ export function resetTelemetry(): void {
   session.p95Warning = false;
   session.rateLimitWarning = false;
   mode = 'live';
+  lastDegradedReason = null;
+  lastWarnedReason = null;
 }

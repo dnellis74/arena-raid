@@ -31,10 +31,14 @@ export async function POST(request: Request): Promise<Response> {
     return json({ error: 'state and questions required' }, 422);
   }
 
-  const apiKey = process.env.TYPESAFE_API_KEY;
+  const apiKey = process.env.TYPESAFE_API_KEY?.trim();
   if (!apiKey) {
     console.info('[api/decide] no TYPESAFE_API_KEY — degraded offline response');
-    return json(offlineProxyAnswers(body.questions as Record<string, ProxyQuestion>, body.state as ProxyDigest));
+    return json(
+      offlineProxyAnswers(body.questions as Record<string, ProxyQuestion>, body.state as ProxyDigest, {
+        reason: 'no_TYPESAFE_API_KEY',
+      }),
+    );
   }
 
   try {
@@ -61,9 +65,12 @@ export async function POST(request: Request): Promise<Response> {
     });
   } catch (err) {
     console.error('[api/decide]', err);
+    const msg = String(err);
     return json({
-      ...offlineProxyAnswers(body.questions as Record<string, ProxyQuestion>, body.state as ProxyDigest),
-      error: String(err),
+      ...offlineProxyAnswers(body.questions as Record<string, ProxyQuestion>, body.state as ProxyDigest, {
+        reason: `typesafe_sdk_error: ${msg}`,
+      }),
+      error: msg,
     });
   }
 }

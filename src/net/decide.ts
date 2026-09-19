@@ -12,7 +12,7 @@ import { DT } from '../sim/types.ts';
 import type { World } from '../sim/world.ts';
 import { gapTo, nearestHostile, recordDecision } from '../sim/world.ts';
 import { buildDigest } from './digest.ts';
-import { callDecide, DecideError } from './jev.ts';
+import { callDecide, DecideError, degradedReasonFromResponse } from './jev.ts';
 import { offlineDecide } from './offlinePolicy.ts';
 import { buildQuestions } from './questions.ts';
 import { setTelemetryMode } from './telemetry.ts';
@@ -40,7 +40,7 @@ let replayLog: DecisionEntry[] = [];
 
 export function setForceOffline(v: boolean): void {
   forceOffline = v;
-  if (v) setTelemetryMode('degraded');
+  if (v) setTelemetryMode('degraded', { reason: '?offline=1 / forceOffline' });
 }
 
 export function setReplayLog(log: DecisionEntry[]): void {
@@ -203,15 +203,20 @@ async function issueDecide(
     if (response.degraded) {
       applyOffline(world, actor);
       world.degraded = true;
-      setTelemetryMode('degraded');
+      setTelemetryMode('degraded', {
+        reason: degradedReasonFromResponse(response),
+      });
     } else {
       applyJevResponse(world, actor, response, source === 'trigger' ? 'live' : source);
       world.degraded = false;
+      setTelemetryMode('live');
     }
-  } catch {
+  } catch (err) {
     applyOffline(world, actor);
     world.degraded = true;
-    setTelemetryMode('degraded');
+    setTelemetryMode('degraded', {
+      reason: err instanceof DecideError ? err.message : String(err),
+    });
   } finally {
     clearTimeout(timeout);
     inFlight.delete(actor.id);
