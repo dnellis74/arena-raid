@@ -16,6 +16,25 @@ export interface QuestionMap {
       };
 }
 
+const DEFAULT_ALLOWED_STATES: StateId[] = [
+  'hold_and_shoot',
+  'close_and_attack',
+  'skirmish',
+  'retreat',
+];
+
+/**
+ * Build the decide question set for an actor + digest (production path used by
+ * calibration). Defaults to the reference-fight allowed states.
+ */
+export function buildDecideQuestions(
+  actor: Actor,
+  digest: DecideDigest,
+  allowedStates: StateId[] = DEFAULT_ALLOWED_STATES,
+): QuestionMap {
+  return buildQuestions(actor, allowedStates, digest);
+}
+
 /**
  * Build Jev questions for one actor.
  *

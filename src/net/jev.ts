@@ -1,3 +1,4 @@
+import { choice, noul, TypeSafeClient, type EntryType } from '@typesafe-ai/sdk';
 import { z } from 'zod';
 import type { ActorId } from '../sim/types.ts';
 import type { QuestionMap } from './questions.ts';
@@ -38,6 +39,52 @@ export class DecideError extends Error {
     this.name = 'DecideError';
   }
 }
+
+/** Convert QuestionMap into SDK question objects (shared by proxy + direct client). */
+export function toSdkQuestions(
+  questions: QuestionMap,
+): Record<string, ReturnType<typeof choice> | ReturnType<typeof noul>> {
+  const out: Record<string, ReturnType<typeof choice> | ReturnType<typeof noul>> = {};
+  for (const [id, q] of Object.entries(questions)) {
+    if (q.type === 'choice') {
+      out[id] = choice(q.instructions, q.criteria);
+    } else if (q.type === 'noul') {
+      out[id] = noul(q.instructions);
+    }
+  }
+  return out;
+}
+
+/**
+ * Direct Jev client for Node scripts (calibration). Uses TYPESAFE_API_KEY —
+ * does not go through `/api/decide` or the Vite proxy.
+ */
+export function createJevClient(apiKey: string, opts: { timeoutMs?: number } = {}) {
+  const client = new TypeSafeClient({
+    apiKey,
+    timeout: opts.timeoutMs ?? 30_000,
+  });
+
+  return {
+    async ask(state: DecideDigest, questions: QuestionMap): Promise<DecideResponse> {
+      const response = await client.systemOne({
+        state: state as unknown as EntryType,
+        model: 'jev-latest',
+        questions: toSdkQuestions(questions),
+      });
+      const parsed = DecideResponseSchema.safeParse({
+        answers: response.answers,
+        usage: response.usage,
+      });
+      if (!parsed.success) {
+        throw new DecideError('schema', 'schema');
+      }
+      return parsed.data;
+    },
+  };
+}
+
+export type JevClient = ReturnType<typeof createJevClient>;
 
 export async function callDecide(
   digest: DecideDigest,

@@ -298,27 +298,75 @@ export function applyJevResponse(
   applyEntry(world, entry);
 }
 
+export interface BehaviorDecisionInput {
+  current: StateId;
+  answers: {
+    behavior?:
+      | {
+          type: 'choice';
+          choice: string;
+          probabilities: Record<string, number>;
+          confidence: number;
+        }
+      | { type: 'noul'; noul: number };
+  };
+  allowedStates: StateId[];
+  /**
+   * Seconds since last state change. Defaults to Infinity so the switch floor
+   * is treated as satisfied (calibration / synthetic callers).
+   */
+  sinceSwitchS?: number;
+}
+
+/**
+ * Resolve the behavior the game would adopt from a Choice answer + hysteresis.
+ * Assert calibration through this — not raw `choice` — so low-confidence
+ * skirmish labels that leave the actor in hold_and_shoot do not count as passes.
+ */
+export function applyBehaviorDecision(input: BehaviorDecisionInput): { state: StateId } {
+  const behavior = input.answers.behavior;
+  if (!behavior || behavior.type !== 'choice') {
+    return { state: input.current };
+  }
+
+  const choice = behavior.choice as StateId;
+  const sinceSwitch = input.sinceSwitchS ?? Infinity;
+  if (sinceSwitch < SWITCH_FLOOR_S && choice !== input.current) {
+    return { state: input.current };
+  }
+  if (!input.allowedStates.includes(choice)) {
+    return { state: input.current };
+  }
+
+  const currentP = behavior.probabilities[input.current] ?? 0;
+  if (behavior.confidence >= 0.7) return { state: choice };
+  if (
+    behavior.confidence >= 0.45 &&
+    (behavior.probabilities[choice] ?? 0) - currentP > 0.15
+  ) {
+    return { state: choice };
+  }
+  return { state: input.current };
+}
+
 function hysteresisPick(
   actor: Actor,
   world: World,
   next: { choice: string; probabilities: Record<string, number>; confidence: number },
 ): StateId {
-  const choice = next.choice as StateId;
-  const sinceSwitch = (world.tick - actor.lastStateChangeTick) * DT;
-  if (sinceSwitch < SWITCH_FLOOR_S && choice !== actor.state) {
-    return actor.state;
-  }
-  if (!world.encounter.allowedStates.includes(choice)) return actor.state;
-
-  const currentP = next.probabilities[actor.state] ?? 0;
-  if (next.confidence >= 0.7) return choice;
-  if (
-    next.confidence >= 0.45 &&
-    (next.probabilities[choice] ?? 0) - currentP > 0.15
-  ) {
-    return choice;
-  }
-  return actor.state;
+  return applyBehaviorDecision({
+    current: actor.state,
+    answers: {
+      behavior: {
+        type: 'choice',
+        choice: next.choice,
+        probabilities: next.probabilities,
+        confidence: next.confidence,
+      },
+    },
+    allowedStates: world.encounter.allowedStates,
+    sinceSwitchS: (world.tick - actor.lastStateChangeTick) * DT,
+  }).state;
 }
 
 function applyEntry(world: World, entry: DecisionEntry): void {

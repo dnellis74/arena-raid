@@ -1,0 +1,203 @@
+{
+  "generatedAt": "2026-09-19T21:23:47.547Z",
+  "questionsGitSha": "257fd0f08fde798a6990191740f6e6b968aac50c",
+  "rows": [
+    {
+      "tier": 1,
+      "id": "1",
+      "order": "skirmish",
+      "repeatIndex": 0,
+      "probabilities": {
+        "skirmish": 0.95,
+        "hold_and_shoot": 0.05,
+        "retreat": 0,
+        "close_and_attack": 0
+      },
+      "confidence": 0.93,
+      "choice": "skirmish",
+      "resolvedBehavior": "skirmish",
+      "result": "PASS"
+    },
+    {
+      "tier": 1,
+      "id": "2",
+      "order": "stay away",
+      "repeatIndex": 0,
+      "probabilities": {
+        "retreat": 0.05,
+        "hold_and_shoot": 0.14,
+        "close_and_attack": 0,
+        "skirmish": 0.81
+      },
+      "confidence": 0.74,
+      "choice": "skirmish",
+      "resolvedBehavior": "skirmish",
+      "result": "PASS"
+    },
+    {
+      "tier": 1,
+      "id": "3",
+      "order": "keep your distance and keep shooting",
+      "repeatIndex": 0,
+      "probabilities": {
+        "close_and_attack": 0,
+        "skirmish": 0.32,
+        "retreat": 0,
+        "hold_and_shoot": 0.68
+      },
+      "confidence": 0.58,
+      "choice": "hold_and_shoot",
+      "resolvedBehavior": "hold_and_shoot",
+      "result": "FAIL"
+    },
+    {
+      "tier": 1,
+      "id": "4",
+      "order": "back away from it while you attack",
+      "repeatIndex": 0,
+      "probabilities": {
+        "hold_and_shoot": 0,
+        "close_and_attack": 0,
+        "skirmish": 1,
+        "retreat": 0
+      },
+      "confidence": 1,
+      "choice": "skirmish",
+      "resolvedBehavior": "skirmish",
+      "result": "PASS"
+    },
+    {
+      "tier": 1,
+      "id": "5",
+      "order": "never let it get within arm's reach, shoot it from a distance",
+      "repeatIndex": 0,
+      "probabilities": {
+        "close_and_attack": 0,
+        "hold_and_shoot": 0.42,
+        "skirmish": 0.58,
+        "retreat": 0
+      },
+      "confidence": 0.44,
+      "choice": "skirmish",
+      "resolvedBehavior": "hold_and_shoot",
+      "result": "FAIL"
+    },
+    {
+      "tier": 2,
+      "id": "6",
+      "order": "don't let the goblin get close",
+      "repeatIndex": 0,
+      "probabilities": {
+        "skirmish": 0.87,
+        "retreat": 0,
+        "close_and_attack": 0,
+        "hold_and_shoot": 0.13
+      },
+      "confidence": 0.83,
+      "choice": "skirmish",
+      "resolvedBehavior": "skirmish",
+      "result": "observed"
+    },
+    {
+      "tier": 2,
+      "id": "7",
+      "order": "kite it",
+      "repeatIndex": 0,
+      "probabilities": {
+        "hold_and_shoot": 0,
+        "skirmish": 1,
+        "retreat": 0,
+        "close_and_attack": 0
+      },
+      "confidence": 1,
+      "choice": "skirmish",
+      "resolvedBehavior": "skirmish",
+      "result": "observed"
+    },
+    {
+      "tier": 2,
+      "id": "8",
+      "order": "hit and run",
+      "repeatIndex": 0,
+      "probabilities": {
+        "close_and_attack": 0,
+        "retreat": 0,
+        "hold_and_shoot": 0,
+        "skirmish": 1
+      },
+      "confidence": 1,
+      "choice": "skirmish",
+      "resolvedBehavior": "skirmish",
+      "result": "observed"
+    },
+    {
+      "tier": 2,
+      "id": "9",
+      "order": "you're squishy, act like it",
+      "repeatIndex": 0,
+      "probabilities": {
+        "hold_and_shoot": 0.08,
+        "skirmish": 0.81,
+        "retreat": 0.11,
+        "close_and_attack": 0
+      },
+      "confidence": 0.74,
+      "choice": "skirmish",
+      "resolvedBehavior": "skirmish",
+      "result": "observed"
+    },
+    {
+      "tier": 2,
+      "id": "10",
+      "order": "stay out of trouble but keep the pressure on",
+      "repeatIndex": 0,
+      "probabilities": {
+        "retreat": 0,
+        "skirmish": 0.86,
+        "hold_and_shoot": 0.14,
+        "close_and_attack": 0
+      },
+      "confidence": 0.81,
+      "choice": "skirmish",
+      "resolvedBehavior": "skirmish",
+      "result": "observed"
+    },
+    {
+      "tier": "N",
+      "id": "N1",
+      "order": "get in its face and hit it",
+      "repeatIndex": 0,
+      "probabilities": {
+        "retreat": 0,
+        "close_and_attack": 0.99,
+        "hold_and_shoot": 0.01,
+        "skirmish": 0
+      },
+      "confidence": 0.99,
+      "choice": "close_and_attack",
+      "resolvedBehavior": "close_and_attack",
+      "result": "PASS"
+    },
+    {
+      "tier": "N",
+      "id": "N2",
+      "order": "run, don't fight",
+      "repeatIndex": 0,
+      "probabilities": {
+        "retreat": 1,
+        "skirmish": 0,
+        "hold_and_shoot": 0,
+        "close_and_attack": 0
+      },
+      "confidence": 1,
+      "choice": "retreat",
+      "resolvedBehavior": "retreat",
+      "result": "PASS"
+    }
+  ],
+  "summary": {
+    "tier1Pass": "3/5",
+    "negativePass": "2/2",
+    "tier2SkirmishRate": "5/5"
+  }
+}

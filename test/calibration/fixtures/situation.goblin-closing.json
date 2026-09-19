@@ -1,0 +1,16 @@
+{
+  "character": {
+    "role": "a spellcaster who attacks from a distance and is weak in close combat",
+    "current_behavior": "standing still and shooting",
+    "ready_abilities": [
+      "Arc Bolt: a weak attack that can be fired from a long way off",
+      "Staff Jab: a weak poke that only works when standing right next to the enemy",
+      "Glyph of Slowing: places a circle on the ground that slows enemies who walk through it",
+      "Arcane Mark: marks an enemy so it takes a little more damage for a short time"
+    ],
+    "unavailable_abilities": []
+  },
+  "enemy": {
+    "kind": "goblin"
+  }
+}
