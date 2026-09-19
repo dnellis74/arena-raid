@@ -1,0 +1,31 @@
+{
+  "name": "arena-raid",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Arena Prompt Combat — TypeSafe Jev-driven puck skirmish prototype",
+  "dependencies": {
+    "@typesafe-ai/sdk": "^0.6.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "@vercel/node": "^13.0.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^4.1.11"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  }
+}

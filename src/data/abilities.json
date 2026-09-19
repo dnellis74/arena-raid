@@ -1,0 +1,193 @@
+{
+  "arc_bolt": {
+    "id": "arc_bolt",
+    "name": "Arc Bolt",
+    "kind": "attack",
+    "delivery": "ranged",
+    "range": 9,
+    "damage": 2,
+    "cooldown": 1.0,
+    "windup": 0.2,
+    "blurb": "a weak attack that can be fired from a long way off"
+  },
+  "staff_jab": {
+    "id": "staff_jab",
+    "name": "Staff Jab",
+    "kind": "attack",
+    "delivery": "melee",
+    "range": 1.2,
+    "damage": 2,
+    "cooldown": 0.8,
+    "windup": 0.2,
+    "blurb": "a weak poke that only works when standing right next to the enemy"
+  },
+  "glyph_of_slowing": {
+    "id": "glyph_of_slowing",
+    "name": "Glyph of Slowing",
+    "kind": "utility",
+    "delivery": "ground",
+    "range": 7,
+    "radius": 3,
+    "cooldown": 10,
+    "windup": 0.4,
+    "effects": [{ "type": "slow_zone", "factor": 0.6, "duration": 4 }],
+    "blurb": "places a circle on the ground that slows enemies who walk through it"
+  },
+  "arcane_mark": {
+    "id": "arcane_mark",
+    "name": "Arcane Mark",
+    "kind": "utility",
+    "delivery": "ranged",
+    "range": 9,
+    "cooldown": 4,
+    "windup": 0.2,
+    "effects": [{ "type": "damage_taken_up", "factor": 0.1, "duration": 5 }],
+    "blurb": "marks an enemy so it takes a little more damage for a short time"
+  },
+  "rusty_cleaver": {
+    "id": "rusty_cleaver",
+    "name": "Rusty Cleaver",
+    "kind": "attack",
+    "delivery": "melee",
+    "range": 1.4,
+    "damage": 6,
+    "cooldown": 1.2,
+    "windup": 0.35,
+    "blurb": "a heavy melee swing that only works within arm's reach"
+  },
+  "shield_bash": {
+    "id": "shield_bash",
+    "name": "Shield Bash",
+    "kind": "attack",
+    "delivery": "melee",
+    "range": 1.4,
+    "damage": 5,
+    "cooldown": 1.4,
+    "windup": 0.3,
+    "effects": [{ "type": "force_retarget", "duration": 3 }],
+    "blurb": "a solid melee bash that forces the enemy to focus on the basher"
+  },
+  "thrown_cleaver": {
+    "id": "thrown_cleaver",
+    "name": "Thrown Cleaver",
+    "kind": "attack",
+    "delivery": "ranged",
+    "range": 7,
+    "damage": 2,
+    "cooldown": 2.0,
+    "windup": 0.3,
+    "blurb": "a weak thrown weapon that can hit from medium range"
+  },
+  "bulwark": {
+    "id": "bulwark",
+    "name": "Bulwark",
+    "kind": "utility",
+    "delivery": "self",
+    "range": 0,
+    "cooldown": 12,
+    "windup": 0,
+    "effects": [{ "type": "damage_reduction", "factor": 0.5, "duration": 4, "radius": 2 }],
+    "blurb": "shields the caster and nearby allies so they take half damage for a short time"
+  },
+  "battle_shout": {
+    "id": "battle_shout",
+    "name": "Battle Shout",
+    "kind": "utility",
+    "delivery": "self",
+    "range": 0,
+    "cooldown": 10,
+    "windup": 0,
+    "effects": [{ "type": "damage_up", "factor": 0.05, "duration": 4, "radius": 6 }],
+    "blurb": "a rallying shout that slightly boosts nearby allies' damage"
+  },
+  "mending_lash": {
+    "id": "mending_lash",
+    "name": "Mending Lash",
+    "kind": "attack",
+    "delivery": "ranged",
+    "range": 6,
+    "damage": 2,
+    "healing": 3,
+    "cooldown": 1.6,
+    "windup": 0.25,
+    "blurb": "a ranged lash that hurts an enemy and heals the most wounded ally"
+  },
+  "staff_swing": {
+    "id": "staff_swing",
+    "name": "Staff Swing",
+    "kind": "attack",
+    "delivery": "melee",
+    "range": 1.4,
+    "damage": 3,
+    "cooldown": 1.0,
+    "windup": 0.25,
+    "blurb": "a basic melee swing with a staff"
+  },
+  "suture": {
+    "id": "suture",
+    "name": "Suture",
+    "kind": "utility",
+    "delivery": "ally",
+    "range": 8,
+    "healing": 8,
+    "cooldown": 6,
+    "windup": 0.4,
+    "blurb": "a strong heal cast on a single ally"
+  },
+  "cleanse": {
+    "id": "cleanse",
+    "name": "Cleanse",
+    "kind": "utility",
+    "delivery": "ally",
+    "range": 8,
+    "healing": 1,
+    "cooldown": 5,
+    "windup": 0.3,
+    "blurb": "removes one harmful effect from an ally and heals a tiny amount"
+  },
+  "flurry": {
+    "id": "flurry",
+    "name": "Flurry",
+    "kind": "attack",
+    "delivery": "melee",
+    "range": 1.4,
+    "damage": 9,
+    "cooldown": 2.0,
+    "windup": 0.2,
+    "effects": [{ "type": "multi_hit", "hits": 3, "perHit": 3, "span": 0.6 }],
+    "blurb": "a rapid melee flurry that lands several hard hits up close"
+  },
+  "thrown_dagger": {
+    "id": "thrown_dagger",
+    "name": "Thrown Dagger",
+    "kind": "attack",
+    "delivery": "ranged",
+    "range": 6,
+    "damage": 2,
+    "cooldown": 1.2,
+    "windup": 0.2,
+    "blurb": "a weak dagger throw usable at medium range"
+  },
+  "shadowstep": {
+    "id": "shadowstep",
+    "name": "Shadowstep",
+    "kind": "utility",
+    "delivery": "self",
+    "range": 6,
+    "cooldown": 8,
+    "windup": 0.1,
+    "effects": [{ "type": "dash", "range": 6 }],
+    "blurb": "a short dash that ignores other fighters blocking the path"
+  },
+  "feint": {
+    "id": "feint",
+    "name": "Feint",
+    "kind": "utility",
+    "delivery": "self",
+    "range": 0,
+    "cooldown": 6,
+    "windup": 0,
+    "effects": [{ "type": "dodge_window", "duration": 0.5 }],
+    "blurb": "a brief dodge that makes the next incoming attack miss"
+  }
+}

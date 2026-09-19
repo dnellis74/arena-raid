@@ -1,0 +1,18 @@
+{
+  "close_and_attack": {
+    "criteria": "Walk straight at the enemy and fight it up close",
+    "abbrev": "CAA"
+  },
+  "hold_and_shoot": {
+    "criteria": "Stand still and attack anything within range",
+    "abbrev": "HAS"
+  },
+  "skirmish": {
+    "criteria": "Back away from the enemy while attacking it, staying out of its reach",
+    "abbrev": "SKR"
+  },
+  "retreat": {
+    "criteria": "Run away from the enemy and do not attack",
+    "abbrev": "RET"
+  }
+}

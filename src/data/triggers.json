@@ -1,0 +1,22 @@
+{
+  "arcanist": {
+    "retreatOnHealthFraction": 0.15,
+    "requestOnContactWhileHolding": true
+  },
+  "goblin": {
+    "retreatOnHealthFraction": 0.0,
+    "requestOnContactWhileHolding": false
+  },
+  "vanguard": {
+    "retreatOnHealthFraction": 0.2,
+    "requestOnContactWhileHolding": true
+  },
+  "warden": {
+    "retreatOnHealthFraction": 0.2,
+    "requestOnContactWhileHolding": true
+  },
+  "duelist": {
+    "retreatOnHealthFraction": 0.25,
+    "requestOnContactWhileHolding": true
+  }
+}

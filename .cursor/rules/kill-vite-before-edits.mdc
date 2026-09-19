@@ -1,0 +1,14 @@
+---
+description: Kill locally running Vite before making code changes
+alwaysApply: true
+---
+
+# Kill Vite Before Edits
+
+Before making any code changes in this project, stop any locally running Vite/dev server first.
+
+1. Find and kill Vite processes (e.g. `vite`, `npm run dev`, or whatever is bound to port **5173**).
+2. Then proceed with edits.
+3. Restart the dev server afterward only if you need it for verification.
+
+Do not edit while Vite is still running.

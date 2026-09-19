@@ -1,0 +1,6 @@
+{
+  "contact": { "min": 0, "max": 1.4, "criteria": "Close enough to touch the enemy" },
+  "just_clear": { "min": 2, "max": 4, "criteria": "Just outside the enemy's reach" },
+  "well_clear": { "min": 5, "max": 8, "criteria": "Well away from the enemy but still able to shoot it" },
+  "disengaged": { "min": 9, "max": 12, "criteria": "Across the arena, out of the fight" }
+}

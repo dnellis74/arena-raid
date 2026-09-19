@@ -1,0 +1,62 @@
+{
+  "arcanist": {
+    "id": "arcanist",
+    "name": "Arcanist",
+    "role": "a spellcaster who attacks from a distance and is weak in close combat",
+    "color": "#A855F7",
+    "glyph": "@",
+    "hp": 24,
+    "moveSpeed": 5.0,
+    "radius": 0.5,
+    "abilities": ["arc_bolt", "staff_jab", "glyph_of_slowing", "arcane_mark"],
+    "defaultState": "hold_and_shoot",
+    "defaultBand": "well_clear",
+    "defaultAbilityOrder": ["arc_bolt", "glyph_of_slowing", "arcane_mark", "staff_jab"],
+    "retreatHpFraction": 0.15
+  },
+  "vanguard": {
+    "id": "vanguard",
+    "name": "Vanguard",
+    "role": "a front-line defender who holds enemies in place up close",
+    "color": "#3B82F6",
+    "glyph": "@",
+    "hp": 40,
+    "moveSpeed": 4.2,
+    "radius": 0.5,
+    "abilities": ["shield_bash", "thrown_cleaver", "bulwark", "battle_shout"],
+    "defaultState": "close_and_attack",
+    "defaultBand": "contact",
+    "defaultAbilityOrder": ["shield_bash", "bulwark", "battle_shout", "thrown_cleaver"],
+    "retreatHpFraction": 0.2
+  },
+  "warden": {
+    "id": "warden",
+    "name": "Warden",
+    "role": "a support leader who heals allies and fights from mid range",
+    "color": "#22C55E",
+    "glyph": "@",
+    "hp": 28,
+    "moveSpeed": 4.5,
+    "radius": 0.5,
+    "abilities": ["mending_lash", "staff_swing", "suture", "cleanse"],
+    "defaultState": "hold_and_shoot",
+    "defaultBand": "just_clear",
+    "defaultAbilityOrder": ["mending_lash", "suture", "cleanse", "staff_swing"],
+    "retreatHpFraction": 0.2
+  },
+  "duelist": {
+    "id": "duelist",
+    "name": "Duelist",
+    "role": "a striker who dashes in for melee bursts then slips away",
+    "color": "#EF4444",
+    "glyph": "@",
+    "hp": 22,
+    "moveSpeed": 5.5,
+    "radius": 0.5,
+    "abilities": ["flurry", "thrown_dagger", "shadowstep", "feint"],
+    "defaultState": "skirmish",
+    "defaultBand": "just_clear",
+    "defaultAbilityOrder": ["flurry", "shadowstep", "feint", "thrown_dagger"],
+    "retreatHpFraction": 0.25
+  }
+}
