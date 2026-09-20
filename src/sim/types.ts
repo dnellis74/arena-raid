@@ -1,10 +1,13 @@
+import encounters from '../data/encounters.json';
+import statesData from '../data/states.json';
+
 export type ActorId = string;
 export type Side = 'player' | 'enemy';
 export type AbilityId = string;
 
 /** Default party standing order applied at fight start (sent to Jev). */
-export const DEFAULT_PARTY_ORDER =
-  'when healthy stand and fight\nwhen hurt kite';
+export const DEFAULT_PARTY_ORDER = encounters.defaultPartyOrder;
+
 export type StateId =
   | 'close_and_attack'
   | 'hold_and_shoot'
@@ -144,21 +147,45 @@ export interface Encounter {
   partyOrder: string | null;
 }
 
-export const ARENA_W = 16;
-export const ARENA_H = 25;
+export const ARENA_W = encounters.arena.w;
+export const ARENA_H = encounters.arena.h;
 export const DT = 1 / 60;
 export const PUCK_RADIUS = 0.5;
 
+type StateRow = { criteria: string; abbrev: string; label: string };
+const states = statesData as Record<StateId, StateRow>;
+
 export const BEHAVIOR_CRITERIA: Record<StateId, string> = {
-  skirmish: 'Back away from the enemy while attacking it, staying out of its reach',
-  close_and_attack: 'Walk straight at the enemy and fight it up close',
-  hold_and_shoot: 'Stand still and attack anything within range',
-  retreat: 'Run away from the enemy and do not attack',
+  close_and_attack: states.close_and_attack.criteria,
+  hold_and_shoot: states.hold_and_shoot.criteria,
+  skirmish: states.skirmish.criteria,
+  retreat: states.retreat.criteria,
 };
 
-export const STATE_ABBREV: Record<StateId, string> = {
-  close_and_attack: 'CAA',
-  hold_and_shoot: 'HAS',
-  skirmish: 'SKR',
-  retreat: 'RET',
+/** Digest / UI label for current_behavior (inverse used by offline stub). */
+export const BEHAVIOR_LABEL: Record<StateId, string> = {
+  close_and_attack: states.close_and_attack.label,
+  hold_and_shoot: states.hold_and_shoot.label,
+  skirmish: states.skirmish.label,
+  retreat: states.retreat.label,
 };
+
+export const BEHAVIOR_FROM_LABEL: Record<string, StateId> = Object.fromEntries(
+  Object.entries(BEHAVIOR_LABEL).map(([id, label]) => [label, id as StateId]),
+) as Record<string, StateId>;
+
+export const STATE_ABBREV: Record<StateId, string> = {
+  close_and_attack: states.close_and_attack.abbrev,
+  hold_and_shoot: states.hold_and_shoot.abbrev,
+  skirmish: states.skirmish.abbrev,
+  retreat: states.retreat.abbrev,
+};
+
+/** Bump an ability to the front of a priority list. */
+export function prependAbility(
+  priority: AbilityId[] | undefined,
+  ability: AbilityId | null | undefined,
+): AbilityId[] | undefined {
+  if (!ability) return priority;
+  return [ability, ...(priority ?? []).filter((a) => a !== ability)];
+}

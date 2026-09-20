@@ -11,8 +11,7 @@
     "abilities": ["arc_bolt", "staff_jab", "glyph_of_slowing", "arcane_mark"],
     "defaultState": "hold_and_shoot",
     "defaultBand": "well_clear",
-    "defaultAbilityOrder": ["arc_bolt", "glyph_of_slowing", "arcane_mark", "staff_jab"],
-    "retreatHpFraction": 0.15
+    "defaultAbilityOrder": ["arc_bolt", "glyph_of_slowing", "arcane_mark", "staff_jab"]
   },
   "vanguard": {
     "id": "vanguard",
@@ -26,8 +25,7 @@
     "abilities": ["shield_bash", "thrown_cleaver", "bulwark", "battle_shout"],
     "defaultState": "close_and_attack",
     "defaultBand": "contact",
-    "defaultAbilityOrder": ["shield_bash", "bulwark", "battle_shout", "thrown_cleaver"],
-    "retreatHpFraction": 0.2
+    "defaultAbilityOrder": ["shield_bash", "bulwark", "battle_shout", "thrown_cleaver"]
   },
   "warden": {
     "id": "warden",
@@ -41,8 +39,7 @@
     "abilities": ["mending_lash", "staff_swing", "suture", "cleanse"],
     "defaultState": "hold_and_shoot",
     "defaultBand": "just_clear",
-    "defaultAbilityOrder": ["mending_lash", "suture", "cleanse", "staff_swing"],
-    "retreatHpFraction": 0.2
+    "defaultAbilityOrder": ["mending_lash", "suture", "cleanse", "staff_swing"]
   },
   "duelist": {
     "id": "duelist",
@@ -56,7 +53,6 @@
     "abilities": ["flurry", "thrown_dagger", "shadowstep", "feint"],
     "defaultState": "skirmish",
     "defaultBand": "just_clear",
-    "defaultAbilityOrder": ["flurry", "shadowstep", "feint", "thrown_dagger"],
-    "retreatHpFraction": 0.25
+    "defaultAbilityOrder": ["flurry", "shadowstep", "feint", "thrown_dagger"]
   }
 }

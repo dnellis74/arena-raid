@@ -1,0 +1,50 @@
+{
+  "behaviorPatterns": [
+    {
+      "pattern": "skirmish|keep (your |the )?distance|kite|stay (back|away)|back away|don't (get )?close|do not (get )?close",
+      "state": "skirmish"
+    },
+    {
+      "pattern": "retreat|run away|flee|get out",
+      "state": "retreat"
+    },
+    {
+      "pattern": "close|melee|charge|rush|walk (straight )?at|fight up close|keep hitting|never back",
+      "state": "close_and_attack"
+    },
+    {
+      "pattern": "hold|stand still|stay put|shoot|don't move|do not move|stand and fight",
+      "state": "hold_and_shoot"
+    }
+  ],
+  "bandForBehavior": {
+    "hold_and_shoot": "well_clear",
+    "close_and_attack": "contact",
+    "skirmish": "well_clear",
+    "retreat": "disengaged"
+  },
+  "partyConditional": {
+    "whenClause": "when (healthy|hurt)",
+    "hurtConditions": ["bloodied", "badly hurt", "at death's door"],
+    "hurtRules": [
+      {
+        "pattern": "when hurt.*kite|kite",
+        "state": "skirmish",
+        "band": "well_clear"
+      }
+    ],
+    "healthyRules": [
+      {
+        "pattern": "when healthy.*(stand|fight|hold)|stand and fight",
+        "state": "hold_and_shoot",
+        "band": "well_clear"
+      }
+    ]
+  },
+  "abilityKeywords": [
+    {
+      "pattern": "slow|glyph|hamper|impede",
+      "abilityId": "glyph_of_slowing"
+    }
+  ]
+}

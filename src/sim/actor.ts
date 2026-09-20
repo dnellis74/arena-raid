@@ -35,7 +35,6 @@ export interface ClassDef {
   defaultState: StateId;
   defaultBand: string;
   defaultAbilityOrder: AbilityId[];
-  retreatHpFraction: number;
 }
 
 export interface MonsterDef {
@@ -52,7 +51,6 @@ export interface MonsterDef {
   defaultBand: string;
   defaultAbilityOrder: AbilityId[];
   standingOrder: string;
-  retreatHpFraction: number;
   /**
    * When true, schedules Jev / offline decide calls.
    * Omit or false = fixed role-default AI (e.g. goblin always charges).

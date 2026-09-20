@@ -1,0 +1,33 @@
+{
+  "conditionBands": [
+    { "label": "untouched", "enterAbove": 0.85, "exitBelow": 0.81 },
+    { "label": "scratched", "enterAbove": 0.6, "exitBelow": 0.56 },
+    { "label": "bloodied", "enterAbove": 0.35, "exitBelow": 0.31 },
+    { "label": "badly hurt", "enterAbove": 0.15, "exitBelow": 0.11 },
+    { "label": "at death's door", "enterAbove": 0, "exitBelow": 0 }
+  ],
+  "howClose": [
+    { "maxGap": "contact", "label": "within reach" },
+    { "maxGap": 2.5, "label": "almost within reach" },
+    { "maxGap": 5, "label": "a short run away" },
+    { "maxGap": 9, "label": "a long way off" },
+    { "label": "across the arena" }
+  ],
+  "roomToBackAway": [
+    { "minDistance": 6, "label": "open" },
+    { "minDistance": 2.5, "label": "limited" },
+    { "label": "cornered" }
+  ],
+  "survivableHitsPhrases": {
+    "1": "the next hit will kill this character",
+    "2": "two more hits would kill this character",
+    "3": "three more hits would kill this character",
+    "default": "can take several more hits"
+  },
+  "hitsToFinishPhrases": {
+    "1": "one more hit will kill it",
+    "2": "two more hits will kill it",
+    "3": "three more hits will kill it",
+    "default": "it will take several more hits to kill"
+  }
+}

@@ -1,16 +1,20 @@
 import { describe, expect, it } from 'vitest';
+import digestBuckets from '../src/data/digestBuckets.json';
 import type { DecideDigest } from '../src/net/digest.ts';
 import { offlineDecide } from '../src/net/offlinePolicy.ts';
 import { buildQuestions, type GoldenCase } from '../src/net/questions.ts';
 import { createActor } from '../src/sim/actor.ts';
 import type { StateId } from '../src/sim/types.ts';
 
+const SH = digestBuckets.survivableHitsPhrases;
+const HF = digestBuckets.hitsToFinishPhrases;
+
 function baseDigest(over: Partial<DecideDigest> = {}): DecideDigest {
   return {
     character: {
       role: 'a spellcaster who attacks from a distance and is weak in close combat',
       condition: 'untouched',
-      survivable_hits: 'can take several more hits',
+      survivable_hits: SH.default,
       current_behavior: 'standing still and shooting',
       ready_abilities: ['Arc Bolt: a weak attack that can be fired from a long way off'],
       unavailable_abilities: [],
@@ -21,7 +25,7 @@ function baseDigest(over: Partial<DecideDigest> = {}): DecideDigest {
     enemy: {
       kind: 'goblin',
       condition: 'untouched',
-      hits_to_finish: 'it will take several more hits to kill',
+      hits_to_finish: HF.default,
       how_close: 'a long way off',
       moving_toward_the_character: true,
       reach: 'can only attack from close enough to touch',
@@ -120,7 +124,7 @@ const cases: GoldenCase[] = [
     situation: {
       character: {
         condition: "at death's door",
-        survivable_hits: 'the next hit will kill this character',
+        survivable_hits: SH['1'],
       } as DecideDigest['character'],
     },
     expectedBehavior: 'retreat',
@@ -190,7 +194,7 @@ const cases: GoldenCase[] = [
       enemy: {
         kind: 'goblin',
         condition: 'untouched',
-        hits_to_finish: 'it will take several more hits to kill',
+        hits_to_finish: HF.default,
         how_close: 'within reach',
         moving_toward_the_character: true,
         reach: 'can only attack from close enough to touch',

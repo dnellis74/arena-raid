@@ -1,3 +1,4 @@
+import encounters from '../data/encounters.json';
 import { createActor } from './actor.ts';
 import { edgeGap } from './buckets.ts';
 import { mulberry32, type Rng } from './rng.ts';
@@ -33,40 +34,31 @@ export interface World {
 }
 
 export function createReferenceFight(seed: number): World {
+  const ref = encounters.referenceFight;
   const encounter: Encounter = {
-    id: 'ref_1v1',
+    id: ref.id,
     seed,
-    allowedStates: ['hold_and_shoot', 'close_and_attack', 'skirmish', 'retreat'],
+    allowedStates: [...ref.allowedStates] as StateId[],
     arenaW: ARENA_W,
     arenaH: ARENA_H,
     partyOrder: null,
   };
 
-  // Opposite ends, gap 12u edge-to-edge → centers 13u apart (r+r=1).
-  // Leave room behind the arcanist so skirmish kiting is not born against a wall.
-  const cx = ARENA_W / 2;
-  const arcanistY = 8;
-  const goblinY = arcanistY + 13; // center distance 13 → edge gap 12
-
-  const arcanist = createActor({
-    id: 'p1',
-    side: 'player',
-    kind: 'arcanist',
-    pos: { x: cx, y: arcanistY },
-    state: 'hold_and_shoot',
-  });
-
-  const goblin = createActor({
-    id: 'e1',
-    side: 'enemy',
-    kind: 'goblin',
-    pos: { x: cx, y: goblinY },
-    state: 'close_and_attack',
+  const actors = ref.actors.map((spawn) => {
+    const x = spawn.pos.xCenter ? ARENA_W / 2 : (spawn.pos as { x?: number }).x ?? 0;
+    const y = spawn.pos.y;
+    return createActor({
+      id: spawn.id,
+      side: spawn.side as Side,
+      kind: spawn.kind,
+      pos: { x, y },
+      state: spawn.state as StateId,
+    });
   });
 
   const world: World = {
     encounter,
-    actors: [arcanist, goblin],
+    actors,
     tick: 0,
     time: 0,
     rng: mulberry32(seed),

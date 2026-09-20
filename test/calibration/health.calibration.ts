@@ -7,28 +7,26 @@
  * through five rungs. Reports P(retreat) monotonicity (soft) and compares
  * a second pass with survivable_hits omitted.
  */
-import { execSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { applyBehaviorDecision } from '../../src/net/decide.ts';
 import type { DecideDigest } from '../../src/net/digest.ts';
 import { createJevClient } from '../../src/net/jev.ts';
 import { buildDecideQuestions } from '../../src/net/questions.ts';
+import { survivableHitsPhrase } from '../../src/sim/buckets.ts';
 import type { StateId } from '../../src/sim/types.ts';
-import { createGoblinClosingWorld } from './situation.ts';
 import { questionsGitSha } from './report.ts';
+import {
+  ALLOWED_STATES,
+  CALIBRATION_DIR,
+  killDevServer,
+  loadGoblinClosingFixture,
+  requireApiKey,
+} from './runner.ts';
+import { createGoblinClosingWorld } from './situation.ts';
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-const FIXTURE_PATH = join(HERE, 'fixtures/situation.goblin-closing.json');
-const SNAPSHOT_DIR = join(HERE, 'snapshots');
+const SNAPSHOT_DIR = join(CALIBRATION_DIR, 'snapshots');
 const ORDER = 'keep your distance and shoot';
-const ALLOWED: StateId[] = [
-  'skirmish',
-  'close_and_attack',
-  'hold_and_shoot',
-  'retreat',
-];
 
 interface HealthRung {
   id: string;
@@ -42,61 +40,31 @@ const RUNGS: HealthRung[] = [
   {
     id: 'H1',
     condition: 'untouched',
-    survivable_hits: 'can take several more hits',
+    survivable_hits: survivableHitsPhrase(4),
     required: 'skirmish',
   },
   {
     id: 'H2',
     condition: 'scratched',
-    survivable_hits: 'three more hits would kill this character',
+    survivable_hits: survivableHitsPhrase(3),
   },
   {
     id: 'H3',
     condition: 'bloodied',
-    survivable_hits: 'two more hits would kill this character',
+    survivable_hits: survivableHitsPhrase(2),
   },
   {
     id: 'H4',
     condition: 'badly hurt',
-    survivable_hits: 'two more hits would kill this character',
+    survivable_hits: survivableHitsPhrase(2),
   },
   {
     id: 'H5',
     condition: "at death's door",
-    survivable_hits: 'the next hit will kill this character',
+    survivable_hits: survivableHitsPhrase(1),
     required: 'retreat',
   },
 ];
-
-function killDevServer(): void {
-  try {
-    execSync('lsof -ti:5173 | xargs kill -9 2>/dev/null; true', {
-      stdio: 'ignore',
-      shell: '/bin/zsh',
-    });
-  } catch {
-    // ignore
-  }
-  try {
-    execSync('pkill -f "[v]ite" 2>/dev/null; true', {
-      stdio: 'ignore',
-      shell: '/bin/zsh',
-    });
-  } catch {
-    // ignore
-  }
-}
-
-function requireApiKey(): string {
-  const key = process.env.TYPESAFE_API_KEY?.trim();
-  if (!key) {
-    console.error(
-      'TYPESAFE_API_KEY is missing. Export it (or load via --env-file=.env) before running calibrate:health.',
-    );
-    process.exit(1);
-  }
-  return key;
-}
 
 async function askRung(
   jev: ReturnType<typeof createJevClient>,
@@ -130,7 +98,7 @@ async function askRung(
   player.partyOrder = null;
   player.state = 'hold_and_shoot';
 
-  const questions = buildDecideQuestions(player, state, ALLOWED);
+  const questions = buildDecideQuestions(player, state, ALLOWED_STATES);
   const response = await jev.ask(state, questions);
   const behavior = response.answers.behavior;
   if (!behavior || behavior.type !== 'choice') {
@@ -139,7 +107,7 @@ async function askRung(
   const resolved = applyBehaviorDecision({
     current: 'hold_and_shoot',
     answers: response.answers,
-    allowedStates: ALLOWED,
+    allowedStates: ALLOWED_STATES,
   }).state;
   return {
     resolved,
@@ -152,8 +120,8 @@ async function askRung(
 
 async function main(): Promise<void> {
   killDevServer();
-  const apiKey = requireApiKey();
-  const fixtureBase = JSON.parse(readFileSync(FIXTURE_PATH, 'utf8')) as DecideDigest;
+  const apiKey = requireApiKey('calibrate:health');
+  const fixtureBase = loadGoblinClosingFixture();
   const { player } = createGoblinClosingWorld();
   const jev = createJevClient(apiKey);
 

@@ -1,11 +1,4 @@
-import triggers from '../data/triggers.json';
 import { actorUsesDecide } from '../sim/actor.ts';
-import {
-  conditionOf,
-  howCloseBucket,
-  survivableHitsCount,
-  type ConditionLabel,
-} from '../sim/buckets.ts';
 import type {
   AbilityId,
   Actor,
@@ -13,14 +6,15 @@ import type {
   RangeBandId,
   StateId,
 } from '../sim/types.ts';
-import { DT } from '../sim/types.ts';
+import { DT, prependAbility } from '../sim/types.ts';
 import type { World } from '../sim/world.ts';
-import { gapTo, nearestHostile, recordDecision } from '../sim/world.ts';
-import { buildDigest, worstIncomingHit } from './digest.ts';
+import { nearestHostile, recordDecision } from '../sim/world.ts';
+import { buildDigest } from './digest.ts';
 import { callDecide, DecideError, degradedReasonFromResponse } from './jev.ts';
-import { offlineDecide } from './offlinePolicy.ts';
+import { applyOfflineDecision } from './offlinePolicy.ts';
 import { buildQuestions } from './questions.ts';
 import { setTelemetryMode } from './telemetry.ts';
+import { collectDecideTriggers } from './triggers.ts';
 
 /** Nominal decide cadence per actor (sim time). */
 export const BASE_INTERVAL_S = 1.0;
@@ -81,7 +75,6 @@ export function requestImmediateDecision(
 export function tickDecisions(world: World): void {
   if (world.matchOver) return;
 
-  // Replay: apply logged decisions at their ticks
   if (replayMode) {
     while (
       replayCursor < replayLog.length &&
@@ -99,7 +92,9 @@ export function tickDecisions(world: World): void {
 
   for (let i = 0; i < deciding.length; i++) {
     const actor = deciding[i]!;
-    evaluateTriggers(world, actor);
+    for (const _ of collectDecideTriggers(world, actor)) {
+      requestImmediateDecision(world, actor);
+    }
 
     const offset = Math.round((i * stagger) / DT);
     const onCadence =
@@ -108,57 +103,6 @@ export function tickDecisions(world: World): void {
 
     if (onCadence && floorOk && !inFlight.has(actor.id)) {
       void issueDecide(world, actor, 'live');
-    }
-  }
-}
-
-function evaluateTriggers(world: World, actor: Actor): void {
-  if (!actorUsesDecide(actor)) return;
-  const trig = (triggers as Record<string, { retreatOnHealthFraction: number; requestOnContactWhileHolding: boolean }>)[
-    actor.kind
-  ];
-  if (!trig) return;
-
-  const enemy = nearestHostile(world, actor);
-  const condition = conditionOf(
-    actor.hp,
-    actor.hpMax,
-    actor.lastCondition as ConditionLabel | null,
-  );
-  const hits = survivableHitsCount(actor.hp, worstIncomingHit(world, actor));
-
-  // Retreat urgency: next incoming hit would kill (not a raw HP %)
-  if (
-    hits === 1 &&
-    world.encounter.allowedStates.includes('retreat') &&
-    actor.state !== 'retreat'
-  ) {
-    requestImmediateDecision(world, actor);
-  }
-
-  if (condition !== actor.lastCondition || hits !== actor.lastSurvivableHits) {
-    actor.lastCondition = condition;
-    actor.lastSurvivableHits = hits;
-    requestImmediateDecision(world, actor);
-  }
-
-  if (enemy) {
-    const gap = gapTo(actor, enemy);
-    const close = howCloseBucket(gap);
-    if (close !== actor.lastHowCloseBucket) {
-      actor.lastHowCloseBucket = close;
-      requestImmediateDecision(world, actor);
-    }
-    if (
-      trig.requestOnContactWhileHolding &&
-      actor.state === 'hold_and_shoot' &&
-      gap <= 1.4
-    ) {
-      requestImmediateDecision(world, actor);
-    }
-    if (!enemy.alive) {
-      actor.stateParams.targetId = undefined;
-      requestImmediateDecision(world, actor);
     }
   }
 }
@@ -180,7 +124,6 @@ async function issueDecide(
 ): Promise<void> {
   if (!actorUsesDecide(actor)) return;
 
-  // Cancel in-flight
   const existing = inFlight.get(actor.id);
   if (existing) {
     existing.controller.abort();
@@ -189,7 +132,7 @@ async function issueDecide(
 
   if (forceOffline) {
     actor.lastDecisionTick = world.tick;
-    applyOffline(world, actor);
+    applyOfflineDecision(world, actor);
     return;
   }
 
@@ -206,15 +149,12 @@ async function issueDecide(
     const { state: digest, questions } = buildDecidePayload(world, actor);
     const response = await callDecide(digest, questions, actor.id, controller.signal);
 
-    // Stale?
     if (world.tick - issuedTick > (BASE_INTERVAL_S / DT) * STALE_INTERVALS) {
       return;
     }
 
-    // Degraded proxy answers must not replace the role-default offline policy.
-    // The no-key stub used to always pick hold_and_shoot, freezing melee enemies.
     if (response.degraded) {
-      applyOffline(world, actor);
+      applyOfflineDecision(world, actor);
       world.degraded = true;
       setTelemetryMode('degraded', {
         reason: degradedReasonFromResponse(response),
@@ -225,7 +165,7 @@ async function issueDecide(
       setTelemetryMode('live');
     }
   } catch (err) {
-    applyOffline(world, actor);
+    applyOfflineDecision(world, actor);
     world.degraded = true;
     setTelemetryMode('degraded', {
       reason: err instanceof DecideError ? err.message : String(err),
@@ -235,30 +175,6 @@ async function issueDecide(
     inFlight.delete(actor.id);
     actor.deciding = false;
   }
-}
-
-function applyOffline(world: World, actor: Actor): void {
-  const digest = buildDigest(world, actor);
-  const d = offlineDecide(actor, digest);
-  const entry: DecisionEntry = {
-    tick: world.tick,
-    actorId: actor.id,
-    state: d.state,
-    params: {
-      rangeBand: d.rangeBand,
-      abilityPriority: d.ability
-        ? [d.ability, ...(actor.stateParams.abilityPriority ?? []).filter((a) => a !== d.ability)]
-        : actor.stateParams.abilityPriority,
-      targetId: nearestHostile(world, actor)?.id,
-    },
-    probabilities: d.probabilities,
-    confidence: d.confidence,
-    ability: d.ability ?? undefined,
-    rangeBand: d.rangeBand,
-    source: 'offline',
-  };
-  applyEntry(world, entry);
-  world.degraded = true;
 }
 
 export function applyJevResponse(
@@ -301,9 +217,7 @@ export function applyJevResponse(
     state: nextState,
     params: {
       rangeBand,
-      abilityPriority: ability
-        ? [ability, ...(actor.stateParams.abilityPriority ?? []).filter((a) => a !== ability)]
-        : actor.stateParams.abilityPriority,
+      abilityPriority: prependAbility(actor.stateParams.abilityPriority, ability),
       targetId: nearestHostile(world, actor)?.id,
       skirmishSign: actor.stateParams.skirmishSign,
     },

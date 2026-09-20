@@ -1,4 +1,6 @@
 import bands from '../data/bands.json';
+import encounters from '../data/encounters.json';
+import prompts from '../data/prompts.json';
 import { getAbility } from '../sim/actor.ts';
 import { BEHAVIOR_CRITERIA, type AbilityId, type Actor, type StateId } from '../sim/types.ts';
 import type { DecideDigest } from './digest.ts';
@@ -16,12 +18,25 @@ export interface QuestionMap {
       };
 }
 
-const DEFAULT_ALLOWED_STATES: StateId[] = [
-  'hold_and_shoot',
-  'close_and_attack',
-  'skirmish',
-  'retreat',
-];
+const DEFAULT_ALLOWED_STATES = encounters.referenceFight.allowedStates as StateId[];
+
+type PromptVariants = {
+  player_direct?: string;
+  player_party?: string;
+  ai: string;
+};
+
+function fillPrompt(
+  variants: PromptVariants,
+  opts: { playerControlled: boolean; hasDirect: boolean; orderBlock: string },
+): string {
+  const template = opts.playerControlled
+    ? opts.hasDirect
+      ? (variants.player_direct ?? variants.player_party ?? variants.ai)
+      : (variants.player_party ?? variants.ai)
+    : variants.ai;
+  return template.replaceAll('{orderBlock}', opts.orderBlock);
+}
 
 /**
  * Build the decide question set for an actor + digest (production path used by
@@ -70,24 +85,18 @@ export function buildQuestions(
     digest.orders?.given_directly_to_this_character?.trim() ||
       actor.standingOrder?.trim(),
   );
+  const fill = (variants: PromptVariants) =>
+    fillPrompt(variants, { playerControlled, hasDirect, orderBlock });
 
   const questions: QuestionMap = {
     behavior: {
       type: 'choice',
-      instructions: playerControlled
-        ? hasDirect
-          ? `${orderBlock}Which behavior best carries out the standing order given directly to this character? Where that order is silent, follow the order given to the whole party. The character order is authoritative: pick the strategy it asks for, even if the fight looks dangerous.`
-          : `${orderBlock}Which behavior best carries out the order given to the whole party? Use the character's condition when the party order distinguishes healthy vs hurt. The party order is authoritative.`
-        : 'Which behavior should this character use right now? Follow the order given directly to this character. Where that order is silent, follow the order given to the whole party.',
+      instructions: fill(prompts.behavior),
       criteria: behaviorCriteria,
     },
     range_band: {
       type: 'choice',
-      instructions: playerControlled
-        ? hasDirect
-          ? `${orderBlock}Given the standing order, how far from the enemy should this character try to stay?`
-          : `${orderBlock}Given the party order and the character's condition, how far from the enemy should this character try to stay?`
-        : 'How far from the enemy should this character try to stay right now?',
+      instructions: fill(prompts.range_band),
       criteria: bandCriteria,
     },
   };
@@ -95,18 +104,14 @@ export function buildQuestions(
   if (!playerControlled) {
     questions.in_trouble = {
       type: 'noul',
-      instructions: 'The character is in immediate danger of being hit by the enemy.',
+      instructions: fill(prompts.in_trouble),
     };
   }
 
   if (Object.keys(abilityCriteria).length > 0) {
     questions.ability = {
       type: 'choice',
-      instructions: playerControlled
-        ? hasDirect
-          ? `${orderBlock}Which ready ability best fits the standing order?`
-          : `${orderBlock}Which ready ability best fits the party order?`
-        : "Which of the character's ready abilities should it use next?",
+      instructions: fill(prompts.ability),
       criteria: abilityCriteria,
     };
   }

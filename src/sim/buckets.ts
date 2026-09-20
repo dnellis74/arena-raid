@@ -1,18 +1,22 @@
 import bands from '../data/bands.json';
+import digestBuckets from '../data/digestBuckets.json';
 import type { RangeBandId, Vec2 } from './types.ts';
 import { ARENA_H, ARENA_W } from './types.ts';
 import { clamp, dist, len, norm, sub } from './vec.ts';
 
-/** Condition labels — no shared word stems across bands. */
-export const CONDITION_BANDS = [
-  { label: 'untouched' as const, enterAbove: 0.85, exitBelow: 0.81 },
-  { label: 'scratched' as const, enterAbove: 0.6, exitBelow: 0.56 },
-  { label: 'bloodied' as const, enterAbove: 0.35, exitBelow: 0.31 },
-  { label: 'badly hurt' as const, enterAbove: 0.15, exitBelow: 0.11 },
-  { label: "at death's door" as const, enterAbove: 0, exitBelow: 0 },
-] as const;
+export type ConditionLabel =
+  | 'untouched'
+  | 'scratched'
+  | 'bloodied'
+  | 'badly hurt'
+  | "at death's door";
 
-export type ConditionLabel = (typeof CONDITION_BANDS)[number]['label'];
+/** Condition labels — no shared word stems across bands. */
+export const CONDITION_BANDS = digestBuckets.conditionBands as readonly {
+  label: ConditionLabel;
+  enterAbove: number;
+  exitBelow: number;
+}[];
 
 export type HowCloseBucket =
   | 'within reach'
@@ -23,13 +27,12 @@ export type HowCloseBucket =
 
 export type RoomBucket = 'open' | 'limited' | 'cornered';
 
-/** Open-loop (no hysteresis) band from HP fraction. */
+/** Open-loop (no hysteresis) band from HP fraction — uses CONDITION_BANDS enterAbove. */
 export function conditionFromFraction(f: number): ConditionLabel {
-  if (f > 0.85) return 'untouched';
-  if (f > 0.6) return 'scratched';
-  if (f > 0.35) return 'bloodied';
-  if (f > 0.15) return 'badly hurt';
-  return "at death's door";
+  for (const b of CONDITION_BANDS) {
+    if (f > b.enterAbove) return b.label;
+  }
+  return CONDITION_BANDS[CONDITION_BANDS.length - 1]!.label;
 }
 
 /**
@@ -67,11 +70,18 @@ export function survivableHitsCount(
   return Math.ceil(hp / worstIncomingHit);
 }
 
+function phraseForHits(
+  hits: number,
+  phrases: { '1': string; '2': string; '3': string; default: string },
+): string {
+  if (hits <= 1) return phrases['1'];
+  if (hits === 2) return phrases['2'];
+  if (hits === 3) return phrases['3'];
+  return phrases.default;
+}
+
 export function survivableHitsPhrase(hits: number): string {
-  if (hits <= 1) return 'the next hit will kill this character';
-  if (hits === 2) return 'two more hits would kill this character';
-  if (hits === 3) return 'three more hits would kill this character';
-  return 'can take several more hits';
+  return phraseForHits(hits, digestBuckets.survivableHitsPhrases);
 }
 
 /** ceil(enemyHp / bestReadyAttackDamage). */
@@ -84,10 +94,7 @@ export function hitsToFinishCount(
 }
 
 export function hitsToFinishPhrase(hits: number): string {
-  if (hits <= 1) return 'one more hit will kill it';
-  if (hits === 2) return 'two more hits will kill it';
-  if (hits === 3) return 'three more hits will kill it';
-  return 'it will take several more hits to kill';
+  return phraseForHits(hits, digestBuckets.hitsToFinishPhrases);
 }
 
 /** Gap = center distance minus both radii (edge-to-edge). */
@@ -100,11 +107,22 @@ export function edgeGap(
   return dist(selfPos, otherPos) - selfR - otherR;
 }
 
+/** Edge gap at or below this is "within reach" / contact trigger — shared with bands.contact.max. */
+export const CONTACT_GAP = bands.contact.max;
+
+function resolveHowCloseMax(maxGap: number | 'contact' | undefined): number | null {
+  if (maxGap === undefined) return null;
+  if (maxGap === 'contact') return bands.contact.max;
+  return maxGap;
+}
+
 export function howCloseBucket(gap: number): HowCloseBucket {
-  if (gap <= 1.4) return 'within reach';
-  if (gap <= 2.5) return 'almost within reach';
-  if (gap <= 5) return 'a short run away';
-  if (gap <= 9) return 'a long way off';
+  for (const row of digestBuckets.howClose) {
+    const max = resolveHowCloseMax(
+      'maxGap' in row ? (row.maxGap as number | 'contact') : undefined,
+    );
+    if (max === null || gap <= max) return row.label as HowCloseBucket;
+  }
   return 'across the arena';
 }
 
@@ -124,8 +142,10 @@ export function roomToBackAway(
   if (away.y > 1e-6) t = Math.min(t, (arenaH - selfPos.y) / away.y);
   else if (away.y < -1e-6) t = Math.min(t, (0 - selfPos.y) / away.y);
   if (!Number.isFinite(t)) t = 0;
-  if (t >= 6) return 'open';
-  if (t >= 2.5) return 'limited';
+  for (const row of digestBuckets.roomToBackAway) {
+    const min = 'minDistance' in row ? row.minDistance : undefined;
+    if (min === undefined || t >= min) return row.label as RoomBucket;
+  }
   return 'cornered';
 }
 

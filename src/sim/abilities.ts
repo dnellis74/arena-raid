@@ -3,14 +3,7 @@ import type { AbilityId, Actor, Vec2 } from './types.ts';
 import type { World } from './world.ts';
 import { allies, gapTo, getActor, pushFloating } from './world.ts';
 import { add, dist, norm, scale, sub } from './vec.ts';
-import { ARENA_H, ARENA_W } from './types.ts';
-
-function clampPos(pos: Vec2, r: number): Vec2 {
-  return {
-    x: Math.max(r, Math.min(ARENA_W - r, pos.x)),
-    y: Math.max(r, Math.min(ARENA_H - r, pos.y)),
-  };
-}
+import { clampToArena } from './buckets.ts';
 
 /** Edge-to-point reach for ground placement (point has no radius). */
 function groundReach(caster: Actor, point: Vec2): number {
@@ -138,9 +131,11 @@ export function resolveAbility(
           ? getActor(world, caster.stateParams.targetId)
           : null;
         const dir = t ? norm(sub(t.pos, caster.pos)) : { x: 0, y: -1 };
-        caster.pos = clampPos(
+        caster.pos = clampToArena(
           add(caster.pos, scale(dir, Math.min(fx.range, ab.range))),
           caster.radius,
+          world.encounter.arenaW,
+          world.encounter.arenaH,
         );
       }
     }

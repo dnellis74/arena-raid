@@ -3,15 +3,23 @@
  * Must NOT blindly prefer hold_and_shoot — that pins melee enemies idle.
  */
 
+import { BEHAVIOR_FROM_LABEL } from '../sim/types.ts';
+import {
+  BAND_FOR_BEHAVIOR,
+  matchOrderBehavior,
+  preferKey,
+} from './orderIntent.ts';
+
 export type ProxyQuestion =
-  | { type: 'choice'; criteria?: Record<string, unknown> }
-  | { type: 'noul'; criteria?: Record<string, unknown> }
-  | { type: string; criteria?: Record<string, unknown> };
+  | { type: 'choice'; criteria?: Record<string, unknown>; instructions?: string }
+  | { type: 'noul'; criteria?: Record<string, unknown>; instructions?: string }
+  | { type: string; criteria?: Record<string, unknown>; instructions?: string };
 
 export interface ProxyDigest {
   character?: {
     role?: string;
     current_behavior?: string;
+    condition?: string;
   };
   orders?: {
     given_directly_to_this_character?: string;
@@ -19,52 +27,26 @@ export interface ProxyDigest {
   };
 }
 
-const BEHAVIOR_FROM_LABEL: Record<string, string> = {
-  'standing still and shooting': 'hold_and_shoot',
-  'walking at the enemy to fight up close': 'close_and_attack',
-  'keeping distance while attacking': 'skirmish',
-  'running away': 'retreat',
-};
-
-const BAND_FOR_BEHAVIOR: Record<string, string> = {
-  hold_and_shoot: 'well_clear',
-  close_and_attack: 'contact',
-  skirmish: 'well_clear',
-  retreat: 'disengaged',
-};
-
 /** Order / role heuristics mirroring offlinePolicy (digest-only, no Actor). */
 export function pickBehaviorKey(keys: string[], state?: ProxyDigest): string {
-  const order = (
-    state?.orders?.given_directly_to_this_character ??
-    state?.orders?.given_to_the_whole_party ??
-    ''
-  ).toLowerCase();
+  const direct = state?.orders?.given_directly_to_this_character ?? '';
+  const party = state?.orders?.given_to_the_whole_party ?? '';
+  const order = (direct || party).toLowerCase();
 
-  const prefer = (id: string) => (keys.includes(id) ? id : null);
-
-  if (/skirmish|keep (your |the )?distance|kite|stay (back|away)|back away|don't (get )?close|do not (get )?close/.test(order)) {
-    return prefer('skirmish') ?? keys[0]!;
-  }
-  if (/retreat|run away|flee|get out/.test(order)) {
-    return prefer('retreat') ?? keys[0]!;
-  }
-  if (/close|melee|charge|rush|walk (straight )?at|fight up close|keep hitting|never back/.test(order)) {
-    return prefer('close_and_attack') ?? keys[0]!;
-  }
-  if (/hold|stand still|stay put|shoot|don't move|do not move/.test(order)) {
-    return prefer('hold_and_shoot') ?? keys[0]!;
+  const matched = matchOrderBehavior(order);
+  if (matched) {
+    return preferKey(keys, matched) ?? keys[0]!;
   }
 
   const role = (state?.character?.role ?? '').toLowerCase();
   if (/melee|charges|front-line|dashes in/.test(role)) {
-    return prefer('close_and_attack') ?? prefer('skirmish') ?? keys[0]!;
+    return preferKey(keys, 'close_and_attack') ?? preferKey(keys, 'skirmish') ?? keys[0]!;
   }
   if (/spellcaster|distance|mid range|support/.test(role)) {
-    return prefer('hold_and_shoot') ?? keys[0]!;
+    return preferKey(keys, 'hold_and_shoot') ?? keys[0]!;
   }
   if (/striker|slips away/.test(role)) {
-    return prefer('skirmish') ?? keys[0]!;
+    return preferKey(keys, 'skirmish') ?? keys[0]!;
   }
 
   const fromLabel = state?.character?.current_behavior
@@ -76,7 +58,9 @@ export function pickBehaviorKey(keys: string[], state?: ProxyDigest): string {
 }
 
 function pickBandKey(keys: string[], behavior: string | undefined): string {
-  const want = behavior ? BAND_FOR_BEHAVIOR[behavior] : undefined;
+  const want = behavior
+    ? BAND_FOR_BEHAVIOR[behavior as keyof typeof BAND_FOR_BEHAVIOR]
+    : undefined;
   if (want && keys.includes(want)) return want;
   if (keys.includes('contact')) return 'contact';
   if (keys.includes('well_clear')) return 'well_clear';
@@ -84,7 +68,6 @@ function pickBandKey(keys: string[], behavior: string | undefined): string {
 }
 
 function pickAbilityKey(keys: string[]): string {
-  // Prefer melee/cleaver when present so goblin stub still attacks
   const melee = keys.find((k) => /cleaver|jab|bash|flurry|swing|lash/.test(k));
   return melee ?? keys[0]!;
 }
@@ -103,7 +86,6 @@ export function offlineProxyAnswers(
   const answers: Record<string, unknown> = {};
   let pickedBehavior: string | undefined;
 
-  // Behavior first so range_band can follow
   const behaviorQ = questions.behavior;
   if (behaviorQ?.type === 'choice' && behaviorQ.criteria) {
     const keys = Object.keys(behaviorQ.criteria);

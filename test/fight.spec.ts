@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import digestBuckets from '../src/data/digestBuckets.json';
 import { createReferenceFight, setPartyOrder } from '../src/sim/world.ts';
 import { stepWorld, runTicks } from '../src/sim/step.ts';
 import { DT } from '../src/sim/types.ts';
@@ -217,7 +218,9 @@ describe('digest fog of war and no numbers', () => {
     p.standingOrder = 'keep your distance and shoot';
     const digest = buildDigest(w, p);
     expect(digest.character.condition).toBe('untouched');
-    expect(digest.character.survivable_hits).toBe('can take several more hits');
+    expect(digest.character.survivable_hits).toBe(
+      digestBuckets.survivableHitsPhrases.default,
+    );
     expect(digest.character.room_to_back_away).toBeUndefined();
     expect(digest.enemy.condition).toBeDefined();
     expect(digest.enemy.hits_to_finish).toBeDefined();

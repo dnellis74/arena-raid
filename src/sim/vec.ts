@@ -40,6 +40,17 @@ export function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v));
 }
 
+/** True when `mover` velocity has a component toward `toward`. */
+export function isApproaching(
+  mover: { pos: Vec2; vel: Vec2 },
+  toward: { pos: Vec2 },
+  threshold = 0.5,
+): boolean {
+  const dx = toward.pos.x - mover.pos.x;
+  const dy = toward.pos.y - mover.pos.y;
+  return dx * mover.vel.x + dy * mover.vel.y > threshold;
+}
+
 export function zero(): Vec2 {
   return { x: 0, y: 0 };
 }

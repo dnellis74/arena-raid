@@ -6,7 +6,7 @@ import type { AbilityId, Actor, StateId, Vec2 } from '../types.ts';
 import { ARENA_H, ARENA_W } from '../types.ts';
 import type { World } from '../world.ts';
 import { gapTo, hostiles, nearestHostile } from '../world.ts';
-import { len, norm, rotate, scale, sub, zero } from '../vec.ts';
+import { len, norm, rotate, scale, sub, zero, isApproaching } from '../vec.ts';
 
 function roomAlong(pos: Vec2, dir: Vec2): number {
   const n = norm(dir);
@@ -164,18 +164,13 @@ export const skirmish: StateHandler = (world, actor) => {
     if (id) {
       actor.vel = zero();
       tryBeginCast(world, actor, id, target);
-    } else if (gap < mid && isClosing(actor, target) && !actor.casting) {
+    } else if (gap < mid && isApproaching(target, actor) && !actor.casting) {
       applyMove(world, actor, skirmishFleeIntent(world, actor, away));
     } else {
       actor.vel = zero();
     }
   }
 };
-
-function isClosing(self: Actor, enemy: Actor): boolean {
-  const towardSelf = sub(self.pos, enemy.pos);
-  return towardSelf.x * enemy.vel.x + towardSelf.y * enemy.vel.y > 0.5;
-}
 
 export const retreat: StateHandler = (world, actor) => {
   const hs = hostiles(world, actor);

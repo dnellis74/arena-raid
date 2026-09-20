@@ -12,7 +12,6 @@
     "defaultState": "close_and_attack",
     "defaultBand": "contact",
     "defaultAbilityOrder": ["rusty_cleaver"],
-    "standingOrder": "Charge the nearest enemy and keep hitting it. Never back off.",
-    "retreatHpFraction": 0.0
+    "standingOrder": "Charge the nearest enemy and keep hitting it. Never back off."
   }
 }

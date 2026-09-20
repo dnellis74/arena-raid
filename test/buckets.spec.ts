@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import digestBuckets from '../src/data/digestBuckets.json';
 import {
   CONDITION_BANDS,
   conditionFromFraction,
@@ -12,6 +13,9 @@ import {
 import { createReferenceFight } from '../src/sim/world.ts';
 import { buildDigest, worstIncomingHit } from '../src/net/digest.ts';
 import { createActor } from '../src/sim/actor.ts';
+
+const SH = digestBuckets.survivableHitsPhrases;
+const HF = digestBuckets.hitsToFinishPhrases;
 
 describe('condition bands (open-loop boundaries)', () => {
   it('classifies both sides of every enterAbove threshold', () => {
@@ -94,11 +98,11 @@ describe('condition hysteresis (Schmitt trigger)', () => {
 
 describe('survivable_hits', () => {
   it('phrases 1, 2, 3, and 4+', () => {
-    expect(survivableHitsPhrase(1)).toBe('the next hit will kill this character');
-    expect(survivableHitsPhrase(2)).toBe('two more hits would kill this character');
-    expect(survivableHitsPhrase(3)).toBe('three more hits would kill this character');
-    expect(survivableHitsPhrase(4)).toBe('can take several more hits');
-    expect(survivableHitsPhrase(10)).toBe('can take several more hits');
+    expect(survivableHitsPhrase(1)).toBe(SH['1']);
+    expect(survivableHitsPhrase(2)).toBe(SH['2']);
+    expect(survivableHitsPhrase(3)).toBe(SH['3']);
+    expect(survivableHitsPhrase(4)).toBe(SH.default);
+    expect(survivableHitsPhrase(10)).toBe(SH.default);
   });
 
   it('uses ceil at exact multiples of incoming damage', () => {
@@ -152,10 +156,10 @@ describe('survivable_hits', () => {
 
 describe('hits_to_finish', () => {
   it('phrases 1, 2, 3, and 4+', () => {
-    expect(hitsToFinishPhrase(1)).toBe('one more hit will kill it');
-    expect(hitsToFinishPhrase(2)).toBe('two more hits will kill it');
-    expect(hitsToFinishPhrase(3)).toBe('three more hits will kill it');
-    expect(hitsToFinishPhrase(4)).toBe('it will take several more hits to kill');
+    expect(hitsToFinishPhrase(1)).toBe(HF['1']);
+    expect(hitsToFinishPhrase(2)).toBe(HF['2']);
+    expect(hitsToFinishPhrase(3)).toBe(HF['3']);
+    expect(hitsToFinishPhrase(4)).toBe(HF.default);
   });
 
   it('ceils enemy hp over best ready attack', () => {
@@ -177,8 +181,6 @@ describe('Arcanist @ 8 HP vs Goblin', () => {
     expect(worstIncomingHit(w, p)).toBe(6);
     expect(survivableHitsCount(8, 6)).toBe(2);
     expect(digest.character.condition).toBe('bloodied');
-    expect(digest.character.survivable_hits).toBe(
-      'two more hits would kill this character',
-    );
+    expect(digest.character.survivable_hits).toBe(SH['2']);
   });
 });

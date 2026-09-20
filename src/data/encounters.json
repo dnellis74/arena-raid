@@ -1,0 +1,29 @@
+{
+  "arena": { "w": 16, "h": 25 },
+  "defaultPartyOrder": "when healthy stand and fight\nwhen hurt kite",
+  "referenceFight": {
+    "id": "ref_1v1",
+    "allowedStates": [
+      "hold_and_shoot",
+      "close_and_attack",
+      "skirmish",
+      "retreat"
+    ],
+    "actors": [
+      {
+        "id": "p1",
+        "side": "player",
+        "kind": "arcanist",
+        "pos": { "xCenter": true, "y": 8 },
+        "state": "hold_and_shoot"
+      },
+      {
+        "id": "e1",
+        "side": "enemy",
+        "kind": "goblin",
+        "pos": { "xCenter": true, "y": 21 },
+        "state": "close_and_attack"
+      }
+    ]
+  }
+}

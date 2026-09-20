@@ -9,16 +9,11 @@ import {
   survivableHitsPhrase,
   type ConditionLabel,
 } from '../sim/buckets.ts';
-import type { Actor, StateId } from '../sim/types.ts';
+import type { Actor } from '../sim/types.ts';
+import { BEHAVIOR_LABEL } from '../sim/types.ts';
 import type { World } from '../sim/world.ts';
 import { gapTo, hostiles, nearestHostile } from '../sim/world.ts';
-
-const BEHAVIOR_LABEL: Record<StateId, string> = {
-  hold_and_shoot: 'standing still and shooting',
-  close_and_attack: 'walking at the enemy to fight up close',
-  skirmish: 'keeping distance while attacking',
-  retreat: 'running away',
-};
+import { isApproaching } from '../sim/vec.ts';
 
 /** Enemy situation block — full for AI; kind + lethality for player. */
 export interface DigestEnemy {
@@ -156,7 +151,7 @@ export function buildDigest(world: World, actor: Actor): DecideDigest {
             condition: enemyCondition,
             ...finishField,
             how_close: howCloseBucket(gapTo(actor, enemy)),
-            moving_toward_the_character: isMovingToward(enemy, actor),
+            moving_toward_the_character: isApproaching(enemy, actor),
             reach: 'can only attack from close enough to touch',
             about_to_attack: enemy.casting !== null,
           }
@@ -187,13 +182,6 @@ export function buildDigest(world: World, actor: Actor): DecideDigest {
   if (Object.keys(orders).length > 0) digest.orders = orders;
 
   return digest;
-}
-
-function isMovingToward(mover: Actor, toward: Actor): boolean {
-  const dx = toward.pos.x - mover.pos.x;
-  const dy = toward.pos.y - mover.pos.y;
-  const dot = dx * mover.vel.x + dy * mover.vel.y;
-  return dot > 0.5;
 }
 
 /** Assert helpers for tests: no numeric coordinates/HP/distances leak. */

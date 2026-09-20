@@ -3,10 +3,6 @@
  * Invoked via: npm run calibrate:skirmish
  * Requires TYPESAFE_API_KEY. Never run from vitest / CI watch.
  */
-import { execSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { applyBehaviorDecision } from '../../src/net/decide.ts';
 import type { DecideDigest } from '../../src/net/digest.ts';
 import { createJevClient } from '../../src/net/jev.ts';
@@ -18,58 +14,14 @@ import {
   type CalibrationCase,
 } from './cases.ts';
 import { printSummary, printTable, writeSnapshot, type RunRow } from './report.ts';
+import {
+  ALLOWED_STATES,
+  killDevServer,
+  loadGoblinClosingFixture,
+  parseRepeats,
+  requireApiKey,
+} from './runner.ts';
 import { createGoblinClosingWorld } from './situation.ts';
-
-const HERE = dirname(fileURLToPath(import.meta.url));
-const FIXTURE_PATH = join(HERE, 'fixtures/situation.goblin-closing.json');
-const ALLOWED: StateId[] = [
-  'skirmish',
-  'close_and_attack',
-  'hold_and_shoot',
-  'retreat',
-];
-
-function killDevServer(): void {
-  try {
-    execSync('lsof -ti:5173 | xargs kill -9 2>/dev/null; true', {
-      stdio: 'ignore',
-      shell: '/bin/zsh',
-    });
-  } catch {
-    // ignore
-  }
-  try {
-    execSync('pkill -f "[v]ite" 2>/dev/null; true', {
-      stdio: 'ignore',
-      shell: '/bin/zsh',
-    });
-  } catch {
-    // ignore
-  }
-}
-
-function parseRepeats(argv: string[]): number | null {
-  for (const arg of argv) {
-    const m = arg.match(/^--repeats=(\d+)$/);
-    if (m) return Number(m[1]);
-  }
-  return null;
-}
-
-function requireApiKey(): string {
-  const key = process.env.TYPESAFE_API_KEY?.trim();
-  if (!key) {
-    console.error(
-      'TYPESAFE_API_KEY is missing. Export it (or load via --env-file=.env) before running calibrate:skirmish.',
-    );
-    process.exit(1);
-  }
-  return key;
-}
-
-function loadFixture(): DecideDigest {
-  return JSON.parse(readFileSync(FIXTURE_PATH, 'utf8')) as DecideDigest;
-}
 
 function repeatsFor(c: CalibrationCase, override: number | null): number {
   if (override !== null) return override;
@@ -78,10 +30,7 @@ function repeatsFor(c: CalibrationCase, override: number | null): number {
   return DEFAULT_REPEATS.tier1;
 }
 
-function grade(
-  c: CalibrationCase,
-  resolved: StateId,
-): RunRow['result'] {
+function grade(c: CalibrationCase, resolved: StateId): RunRow['result'] {
   if (c.tier === 2) return 'observed';
   if (c.required && resolved === c.required) return 'PASS';
   return 'FAIL';
@@ -89,9 +38,9 @@ function grade(
 
 async function main(): Promise<void> {
   killDevServer();
-  const apiKey = requireApiKey();
+  const apiKey = requireApiKey('calibrate:skirmish');
   const repeatsOverride = parseRepeats(process.argv.slice(2));
-  const fixtureBase = loadFixture();
+  const fixtureBase = loadGoblinClosingFixture();
   const { player } = createGoblinClosingWorld();
   const jev = createJevClient(apiKey);
 
@@ -110,7 +59,7 @@ async function main(): Promise<void> {
       player.partyOrder = null;
       player.state = 'hold_and_shoot';
 
-      const questions = buildDecideQuestions(player, state, ALLOWED);
+      const questions = buildDecideQuestions(player, state, ALLOWED_STATES);
       const response = await jev.ask(state, questions);
       const behavior = response.answers.behavior;
       if (!behavior || behavior.type !== 'choice') {
@@ -120,11 +69,11 @@ async function main(): Promise<void> {
       const resolved = applyBehaviorDecision({
         current: 'hold_and_shoot',
         answers: response.answers,
-        allowedStates: ALLOWED,
+        allowedStates: ALLOWED_STATES,
       }).state;
 
       const choice = behavior.choice as StateId;
-      const row: RunRow = {
+      rows.push({
         tier: c.tier,
         id: c.id,
         order: c.order,
@@ -136,8 +85,7 @@ async function main(): Promise<void> {
         resolved,
         result: grade(c, resolved),
         repeatIndex: i,
-      };
-      rows.push(row);
+      });
     }
   }
 

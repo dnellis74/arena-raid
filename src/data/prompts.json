@@ -1,0 +1,20 @@
+{
+  "behavior": {
+    "player_direct": "{orderBlock}Which behavior best carries out the standing order given directly to this character? Where that order is silent, follow the order given to the whole party. The character order is authoritative: pick the strategy it asks for, even if the fight looks dangerous.",
+    "player_party": "{orderBlock}Which behavior best carries out the order given to the whole party? Use the character's condition when the party order distinguishes healthy vs hurt. The party order is authoritative.",
+    "ai": "Which behavior should this character use right now? Follow the order given directly to this character. Where that order is silent, follow the order given to the whole party."
+  },
+  "range_band": {
+    "player_direct": "{orderBlock}Given the standing order, how far from the enemy should this character try to stay?",
+    "player_party": "{orderBlock}Given the party order and the character's condition, how far from the enemy should this character try to stay?",
+    "ai": "How far from the enemy should this character try to stay right now?"
+  },
+  "ability": {
+    "player_direct": "{orderBlock}Which ready ability best fits the standing order?",
+    "player_party": "{orderBlock}Which ready ability best fits the party order?",
+    "ai": "Which of the character's ready abilities should it use next?"
+  },
+  "in_trouble": {
+    "ai": "The character is in immediate danger of being hit by the enemy."
+  }
+}
