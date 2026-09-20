@@ -142,9 +142,10 @@ export function resolveAbility(
   }
 
   for (const fx of ab.effects ?? []) {
-    if (fx.type === 'force_retarget' && target) {
+    if (fx.type === 'force_retarget' && target && target.alive) {
       target.forceRetargetTo = caster.id;
       target.forceRetargetUntil = world.time + fx.duration;
+      pushFloating(world, target.pos, 'taunt', '#93c5fd');
     }
     if (fx.type === 'damage_taken_up' && target && target.alive) {
       target.statuses = target.statuses.filter((s) => s.type !== 'damage_taken_up');
@@ -179,8 +180,14 @@ function applyAura(
   const targets = [caster, ...allies(world, caster)].filter(
     (a) => a.id === caster.id || dist(a.pos, caster.pos) <= radius + 0.01,
   );
+  const label = type === 'damage_reduction' ? 'ward' : type === 'damage_up' ? 'shout' : type;
+  const color = type === 'damage_reduction' ? '#93c5fd' : '#fbbf24';
   for (const t of targets) {
+    t.statuses = t.statuses.filter(
+      (s) => !(s.type === type && s.sourceId === caster.id),
+    );
     t.statuses.push({ type, remaining: duration, factor, sourceId: caster.id });
+    pushFloating(world, t.pos, label, color);
   }
 }
 

@@ -49,6 +49,22 @@
     {
       "pattern": "mark|amplify|vulnerable|weaken|take more damage",
       "abilityId": "arcane_mark"
+    },
+    {
+      "pattern": "bulwark|ward|half damage|mitigate|defend",
+      "abilityId": "bulwark"
+    },
+    {
+      "pattern": "shout|rally|buff",
+      "abilityId": "battle_shout"
+    },
+    {
+      "pattern": "bash|taunt|on you|focus (on )?me|hold them",
+      "abilityId": "shield_bash"
+    },
+    {
+      "pattern": "throw|cleaver|toss",
+      "abilityId": "thrown_cleaver"
     }
   ]
 }

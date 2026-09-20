@@ -1,8 +1,7 @@
 {
   "arena": { "w": 16, "h": 25 },
-  "defaultPartyOrder": "when healthy stand and fight\nwhen hurt kite",
   "referenceFight": {
-    "id": "ref_1v1",
+    "id": "ref_2v2",
     "allowedStates": [
       "hold_and_shoot",
       "close_and_attack",
@@ -14,15 +13,25 @@
         "id": "p1",
         "side": "player",
         "kind": "arcanist",
-        "pos": { "xCenter": true, "y": 8 },
-        "state": "hold_and_shoot"
+        "pos": { "x": 6, "y": 8 }
+      },
+      {
+        "id": "p2",
+        "side": "player",
+        "kind": "vanguard",
+        "pos": { "x": 10, "y": 11 }
       },
       {
         "id": "e1",
         "side": "enemy",
         "kind": "goblin",
-        "pos": { "xCenter": true, "y": 21 },
-        "state": "close_and_attack"
+        "pos": { "x": 6, "y": 21 }
+      },
+      {
+        "id": "e2",
+        "side": "enemy",
+        "kind": "goblin",
+        "pos": { "x": 10, "y": 21 }
       }
     ]
   }

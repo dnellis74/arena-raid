@@ -5,9 +5,6 @@ export type ActorId = string;
 export type Side = 'player' | 'enemy';
 export type AbilityId = string;
 
-/** Default party standing order applied at fight start (sent to Jev). */
-export const DEFAULT_PARTY_ORDER = encounters.defaultPartyOrder;
-
 export type StateId =
   | 'close_and_attack'
   | 'hold_and_shoot'

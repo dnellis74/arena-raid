@@ -13,7 +13,7 @@ import type {
   StateId,
   Vec2,
 } from './types.ts';
-import { ARENA_H, ARENA_W, DEFAULT_PARTY_ORDER } from './types.ts';
+import { ARENA_H, ARENA_W } from './types.ts';
 import { dist } from './vec.ts';
 
 export interface World {
@@ -33,7 +33,10 @@ export interface World {
   nextGroundId: number;
 }
 
-export function createReferenceFight(seed: number): World {
+export function createReferenceFight(
+  seed: number,
+  opts?: { players?: string[]; enemies?: number },
+): World {
   const ref = encounters.referenceFight;
   const encounter: Encounter = {
     id: ref.id,
@@ -44,17 +47,29 @@ export function createReferenceFight(seed: number): World {
     partyOrder: null,
   };
 
-  const actors = ref.actors.map((spawn) => {
-    const x = spawn.pos.xCenter ? ARENA_W / 2 : (spawn.pos as { x?: number }).x ?? 0;
-    const y = spawn.pos.y;
-    return createActor({
-      id: spawn.id,
-      side: spawn.side as Side,
-      kind: spawn.kind,
-      pos: { x, y },
-      state: spawn.state as StateId,
+  let enemySeen = 0;
+  const actors = ref.actors
+    .filter((spawn) => {
+      if (spawn.side === 'player') {
+        return !opts?.players || opts.players.includes(spawn.kind);
+      }
+      if (opts?.enemies !== undefined) {
+        enemySeen += 1;
+        return enemySeen <= opts.enemies;
+      }
+      return true;
+    })
+    .map((spawn) => {
+      const pos = spawn.pos as { x?: number; y: number; xCenter?: boolean };
+      const y = pos.y;
+      const x = pos.xCenter || pos.x === undefined ? ARENA_W / 2 : pos.x;
+      return createActor({
+        id: spawn.id,
+        side: spawn.side as Side,
+        kind: spawn.kind,
+        pos: { x, y },
+      });
     });
-  });
 
   const world: World = {
     encounter,
@@ -72,7 +87,6 @@ export function createReferenceFight(seed: number): World {
     nextFloatId: 1,
     nextGroundId: 1,
   };
-  setPartyOrder(world, DEFAULT_PARTY_ORDER);
   return world;
 }
 

@@ -35,9 +35,14 @@ export function offlineDecide(actor: Actor, digest: DecideDigest): OfflineDecisi
   let state = defaults.state;
   let rangeBand = defaults.band ?? 'well_clear';
 
-  // Party "when healthy … / when hurt …" — use digest condition when no direct order.
-  if (!direct && partyHasConditional(party)) {
-    const conditional = matchPartyConditional(party, digest.character.condition);
+  // "when healthy … / when hurt …" on the character order first, else party.
+  const conditionalText = partyHasConditional(direct)
+    ? direct
+    : !direct && partyHasConditional(party)
+      ? party
+      : '';
+  if (conditionalText) {
+    const conditional = matchPartyConditional(conditionalText, digest.character.condition);
     if (conditional) {
       state = conditional.state;
       rangeBand = (conditional.band as RangeBandId) ?? rangeBand;

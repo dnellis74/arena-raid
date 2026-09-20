@@ -86,7 +86,6 @@ restartBtn.addEventListener('click', () => resetMatch());
 sheet.controlBar.appendChild(restartBtn);
 
 function resetMatch(): void {
-  // Keep prior standing / party orders across Restart / new seed fights.
   const savedStanding = new Map<string, string>();
   for (const a of world.actors) {
     if (a.standingOrder) savedStanding.set(a.id, a.standingOrder);
@@ -98,7 +97,6 @@ function resetMatch(): void {
   matchEndPrinted = false;
   world = createReferenceFight(seed);
 
-  // Reapply prior party order exactly (including null if the player cleared it).
   setPartyOrder(world, savedParty);
   for (const a of world.actors) {
     const order = savedStanding.get(a.id);

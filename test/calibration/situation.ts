@@ -8,7 +8,7 @@ import { createReferenceFight, type World } from '../../src/sim/world.ts';
  * `orders.given_directly_to_this_character` per case.
  */
 export function createGoblinClosingWorld(seed = 1): { world: World; player: Actor } {
-  const world = createReferenceFight(seed);
+  const world = createReferenceFight(seed, { players: ['arcanist'], enemies: 1 });
   const player = world.actors.find((a) => a.side === 'player')!;
   const goblin = world.actors.find((a) => a.side === 'enemy')!;
   // Centers 5u apart → edge gap 4u → how_close "a short run away"

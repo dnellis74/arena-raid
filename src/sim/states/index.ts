@@ -70,7 +70,9 @@ function readyAbility(
     if (!actor.abilities.includes(id)) continue;
     if ((actor.cooldowns[id] ?? 0) > 0) continue;
     const ab = getAbility(id);
-    if (minRange !== undefined && ab.range < minRange) continue;
+    if (minRange !== undefined && ab.delivery !== 'self' && ab.range < minRange) {
+      continue;
+    }
     return id;
   }
   return null;
@@ -100,9 +102,11 @@ export const closeAndAttack: StateHandler = (world, actor) => {
   const shortest = ranges.length ? Math.min(...ranges) : 1.4;
   const intent = gap > shortest ? norm(sub(target.pos, actor.pos)) : zero();
   applyMove(world, actor, intent);
-  if (gap <= shortest + 0.05) {
-    const id = readyAbility(actor, priority);
-    if (id) tryBeginCast(world, actor, id, target);
+  const id = readyAbility(actor, priority);
+  if (!id) return;
+  const ab = getAbility(id);
+  if (ab.delivery === 'self' || gap <= shortest + 0.05) {
+    tryBeginCast(world, actor, id, target);
   }
 };
 
@@ -115,7 +119,9 @@ export const holdAndShoot: StateHandler = (world, actor) => {
   const id = readyAbility(actor, actor.stateParams.abilityPriority);
   if (!id) return;
   const ab = getAbility(id);
-  if (gap <= ab.range) tryBeginCast(world, actor, id, target);
+  if (ab.delivery === 'self' || gap <= ab.range) {
+    tryBeginCast(world, actor, id, target);
+  }
 };
 
 export const skirmish: StateHandler = (world, actor) => {

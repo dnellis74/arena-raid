@@ -35,6 +35,8 @@ export interface ClassDef {
   defaultState: StateId;
   defaultBand: string;
   defaultAbilityOrder: AbilityId[];
+  /** Character standing order at spawn. Party order starts blank. */
+  standingOrder?: string;
 }
 
 export interface MonsterDef {
@@ -84,8 +86,8 @@ export function createActor(opts: {
   const standingOrder =
     opts.standingOrder !== undefined
       ? opts.standingOrder
-      : 'standingOrder' in def
-        ? (def as MonsterDef).standingOrder
+      : def.standingOrder?.trim()
+        ? def.standingOrder
         : null;
 
   const color = isPlayerClass ? (def as ClassDef).color : '#111111';

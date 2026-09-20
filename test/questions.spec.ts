@@ -151,6 +151,27 @@ const cases: GoldenCase[] = [
     expectedBehavior: 'hold_and_shoot',
   },
   {
+    id: 'arcanist-standing-healthy',
+    standingOrder: 'when healthy stand and fight\nwhen hurt kite',
+    partyOrder: null,
+    situation: {},
+    expectedBehavior: 'hold_and_shoot',
+  },
+  {
+    id: 'arcanist-standing-hurt',
+    standingOrder: 'when healthy stand and fight\nwhen hurt kite',
+    partyOrder: null,
+    situation: { character: { condition: 'bloodied' } } as GoldenCase['situation'],
+    expectedBehavior: 'skirmish',
+  },
+  {
+    id: 'vanguard-standing-close',
+    standingOrder: 'close in and keep hitting. hold them on you.',
+    partyOrder: null,
+    situation: {},
+    expectedBehavior: 'close_and_attack',
+  },
+  {
     id: 'party-only-skirmish',
     standingOrder: null,
     partyOrder: 'everyone keep distance and kite',

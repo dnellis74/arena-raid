@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import classes from '../src/data/classes.json' with { type: 'json' };
 import digestBuckets from '../src/data/digestBuckets.json' with { type: 'json' };
 import { createReferenceFight, setPartyOrder } from '../src/sim/world.ts';
 import { stepWorld, runTicks } from '../src/sim/step.ts';
@@ -85,19 +86,26 @@ describe('mulberry32', () => {
 });
 
 describe('actors move collide attack die', () => {
-  it('spawns arcanist and goblin and can kill', () => {
+  it('spawns arcanist, vanguard, and two goblins and can kill', () => {
     const w = createReferenceFight(1);
-    expect(w.actors).toHaveLength(2);
+    expect(w.actors).toHaveLength(4);
     const p = w.actors.find((a) => a.kind === 'arcanist')!;
-    const g = w.actors.find((a) => a.kind === 'goblin')!;
+    const v = w.actors.find((a) => a.kind === 'vanguard')!;
+    const goblins = w.actors.filter((a) => a.kind === 'goblin');
     expect(p.hp).toBe(24);
-    expect(g.hp).toBe(20);
+    expect(v.hp).toBe(40);
+    expect(goblins).toHaveLength(2);
+    expect(goblins.every((g) => g.hp === 20)).toBe(true);
 
     // Force close combat
     p.state = 'close_and_attack';
-    g.state = 'close_and_attack';
+    v.state = 'close_and_attack';
     p.pos = { x: 8, y: 14 };
-    g.pos = { x: 8, y: 15.2 };
+    v.pos = { x: 9, y: 14 };
+    goblins[0]!.state = 'close_and_attack';
+    goblins[1]!.state = 'close_and_attack';
+    goblins[0]!.pos = { x: 8, y: 15.2 };
+    goblins[1]!.pos = { x: 9, y: 15.2 };
     runTicks(w, 60 * 15);
     expect(w.matchOver).toBe(true);
   });
@@ -232,15 +240,15 @@ describe('digest fog of war and no numbers', () => {
     expect(digest.orders?.given_directly_to_this_character).toBe('keep your distance and shoot');
   });
 
-  it('sends party order by default and omits character order until specified', () => {
+  it('starts with a class standing order and a blank party order', () => {
     const w = createReferenceFight(1);
-    const p = w.actors.find((a) => a.side === 'player')!;
-    expect(p.standingOrder).toBeNull();
-    expect(w.partyOrder).toContain('when healthy stand and fight');
-    expect(p.partyOrder).toBe(w.partyOrder);
+    const p = w.actors.find((a) => a.kind === 'arcanist')!;
+    expect(p.standingOrder).toBe(classes.arcanist.standingOrder);
+    expect(w.partyOrder).toBeNull();
+    expect(p.partyOrder).toBeNull();
     const digest = buildDigest(w, p);
-    expect(digest.orders?.given_directly_to_this_character).toBeUndefined();
-    expect(digest.orders?.given_to_the_whole_party).toBe(w.partyOrder);
+    expect(digest.orders?.given_directly_to_this_character).toBe(p.standingOrder);
+    expect(digest.orders?.given_to_the_whole_party).toBeUndefined();
   });
 
   it('includes character order only when standingOrder is set', () => {
@@ -249,7 +257,7 @@ describe('digest fog of war and no numbers', () => {
     p.standingOrder = 'kite and shoot';
     const digest = buildDigest(w, p);
     expect(digest.orders?.given_directly_to_this_character).toBe('kite and shoot');
-    expect(digest.orders?.given_to_the_whole_party).toBe(w.partyOrder);
+    expect(digest.orders?.given_to_the_whole_party).toBeUndefined();
   });
 
   it('issueDecide fetch body includes state.orders after order is set (live client path)', async () => {
@@ -319,7 +327,7 @@ describe('digest fog of war and no numbers', () => {
 
 describe('reference fight', () => {
   it('Case A: hold_and_shoot with no orders loses', () => {
-    const w = createReferenceFight(42);
+    const w = createReferenceFight(42, { players: ['arcanist'], enemies: 1 });
     const p = w.actors.find((a) => a.side === 'player')!;
     const g = w.actors.find((a) => a.side === 'enemy')!;
     p.standingOrder = null;
@@ -335,7 +343,7 @@ describe('reference fight', () => {
   });
 
   it('Case B: prompted skirmish wins', () => {
-    const w = createReferenceFight(42);
+    const w = createReferenceFight(42, { players: ['arcanist'], enemies: 1 });
     const p = w.actors.find((a) => a.side === 'player')!;
     p.standingOrder = 'keep your distance and shoot';
     runHeadlessOffline(w, 30);
@@ -359,11 +367,11 @@ describe('reference fight', () => {
   });
 
   it('wrong close_and_attack loses faster than default', () => {
-    const wA = createReferenceFight(42);
+    const wA = createReferenceFight(42, { players: ['arcanist'], enemies: 1 });
     runHeadlessOffline(wA, 30);
     const tA = wA.time;
 
-    const wC = createReferenceFight(42);
+    const wC = createReferenceFight(42, { players: ['arcanist'], enemies: 1 });
     const p = wC.actors.find((a) => a.side === 'player')!;
     p.standingOrder = 'charge in and fight up close';
     runHeadlessOffline(wC, 30);
@@ -410,9 +418,10 @@ describe('decide cadence', () => {
     setForceOffline(false);
   });
 
-  it('skips decide for fixed-role goblin; player still decides', () => {
+  it('skips decide for fixed-role goblin; players still decide', () => {
     const w = createReferenceFight(1);
     const p = w.actors.find((a) => a.kind === 'arcanist')!;
+    const v = w.actors.find((a) => a.kind === 'vanguard')!;
     const g = w.actors.find((a) => a.kind === 'goblin')!;
     const goblinStartY = g.pos.y;
     expect(g.state).toBe('close_and_attack');
@@ -420,12 +429,12 @@ describe('decide cadence', () => {
     runHeadlessOffline(w, 8);
 
     expect(g.decisionLog.length).toBe(0);
-    expect(w.decisionLog.every((e) => e.actorId === p.id)).toBe(true);
-    expect(p.decisionLog.length).toBeGreaterThan(0);
-    // Goblin still charges and fights on spawn defaults
+    expect(w.decisionLog.every((e) => e.actorId === p.id || e.actorId === v.id)).toBe(
+      true,
+    );
+    expect(p.decisionLog.length + v.decisionLog.length).toBeGreaterThan(0);
     expect(g.state).toBe('close_and_attack');
     expect(g.pos.y).toBeLessThan(goblinStartY);
-    expect(p.hp).toBeLessThan(p.hpMax);
   });
 });
 

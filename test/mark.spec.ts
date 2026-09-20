@@ -8,6 +8,10 @@ import { applySyntheticAnswers } from '../src/net/decide.ts';
 import { offlineDecide } from '../src/net/offlinePolicy.ts';
 import { buildDigest } from '../src/net/digest.ts';
 
+function fight(seed = 1) {
+  return createReferenceFight(seed, { players: ['arcanist'], enemies: 1 });
+}
+
 function settleCast(world: ReturnType<typeof createReferenceFight>, ticks = 20): void {
   for (let i = 0; i < ticks; i++) stepWorld(world, DT);
 }
@@ -24,7 +28,7 @@ describe('Arcane Mark', () => {
   });
 
   it('applies +10% damage taken for 5s', () => {
-    const w = createReferenceFight(1);
+    const w = fight(1);
     const p = w.actors.find((a) => a.kind === 'arcanist')!;
     const g = w.actors.find((a) => a.kind === 'goblin')!;
     p.pos = { x: 8, y: 10 };
@@ -42,7 +46,7 @@ describe('Arcane Mark', () => {
   });
 
   it('refreshes duration instead of stacking', () => {
-    const w = createReferenceFight(1);
+    const w = fight(1);
     const p = w.actors.find((a) => a.kind === 'arcanist')!;
     const g = w.actors.find((a) => a.kind === 'goblin')!;
     p.pos = { x: 8, y: 10 };
@@ -70,7 +74,7 @@ describe('Arcane Mark', () => {
   });
 
   it('fires during hold_and_shoot when prioritized', () => {
-    const w = createReferenceFight(42);
+    const w = fight(42);
     const p = w.actors.find((a) => a.side === 'player')!;
     const g = w.actors.find((a) => a.side === 'enemy')!;
     p.pos = { x: 8, y: 10 };
@@ -89,7 +93,7 @@ describe('Arcane Mark', () => {
   });
 
   it('fires during skirmish when ability Choice puts it first', () => {
-    const w = createReferenceFight(42);
+    const w = fight(42);
     const p = w.actors.find((a) => a.side === 'player')!;
     const g = w.actors.find((a) => a.side === 'enemy')!;
     p.pos = { x: 8, y: 10 };
@@ -112,7 +116,7 @@ describe('Arcane Mark', () => {
 
 describe('offline ability preference for Arcane Mark', () => {
   it('prioritizes mark when the standing order asks to mark', () => {
-    const w = createReferenceFight(1);
+    const w = fight(1);
     const p = w.actors.find((a) => a.kind === 'arcanist')!;
     p.standingOrder = 'mark the goblin and keep shooting';
     const d = offlineDecide(p, buildDigest(w, p));

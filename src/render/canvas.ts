@@ -66,7 +66,7 @@ export function renderArena(
   // Pucks
   for (const a of world.actors) {
     if (!a.alive) continue;
-    drawPuck(ctx, a, t, a.id === selectedId);
+    drawPuck(ctx, a, t, a.id === selectedId, world.time);
   }
 
   // Floating damage
@@ -103,11 +103,62 @@ function drawArcaneMark(
   ctx.fillText('*', p.x, p.y - r - 5);
 }
 
+/** Shield brackets — shape, not just color. */
+function drawBulwark(
+  ctx: CanvasRenderingContext2D,
+  p: { x: number; y: number },
+  r: number,
+): void {
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 2;
+  const h = r + 6;
+  ctx.beginPath();
+  ctx.moveTo(p.x - r - 4, p.y - h);
+  ctx.lineTo(p.x - r - 7, p.y);
+  ctx.lineTo(p.x - r - 4, p.y + h);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(p.x + r + 4, p.y - h);
+  ctx.lineTo(p.x + r + 7, p.y);
+  ctx.lineTo(p.x + r + 4, p.y + h);
+  ctx.stroke();
+}
+
+/** Carets above the puck for a damage buff. */
+function drawShout(
+  ctx: CanvasRenderingContext2D,
+  p: { x: number; y: number },
+  r: number,
+): void {
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 2;
+  const y = p.y - r - 6;
+  ctx.beginPath();
+  ctx.moveTo(p.x - 5, y);
+  ctx.lineTo(p.x, y - 6);
+  ctx.lineTo(p.x + 5, y);
+  ctx.stroke();
+}
+
+/** "!" on a taunted enemy so aggro isn't color-only. */
+function drawTaunt(
+  ctx: CanvasRenderingContext2D,
+  p: { x: number; y: number },
+  r: number,
+): void {
+  ctx.fillStyle = '#e2e8f0';
+  ctx.font = `bold ${Math.max(12, r * 1.1)}px ui-monospace, monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('!', p.x + r + 6, p.y - r);
+}
+
 function drawPuck(
   ctx: CanvasRenderingContext2D,
   a: Actor,
   t: ViewTransform,
   selected: boolean,
+  now: number,
 ): void {
   const p = worldToScreen(t, a.pos.x, a.pos.y);
   const r = a.radius * t.scale;
@@ -143,6 +194,15 @@ function drawPuck(
 
   if (a.statuses.some((s) => s.type === 'damage_taken_up')) {
     drawArcaneMark(ctx, p, r);
+  }
+  if (a.statuses.some((s) => s.type === 'damage_reduction')) {
+    drawBulwark(ctx, p, r);
+  }
+  if (a.statuses.some((s) => s.type === 'damage_up')) {
+    drawShout(ctx, p, r);
+  }
+  if (a.forceRetargetTo && now < a.forceRetargetUntil) {
+    drawTaunt(ctx, p, r);
   }
 
   // Glyph

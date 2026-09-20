@@ -145,9 +145,10 @@ describe('survivable_hits', () => {
   it('dead-hostiles-only omits survivable_hits', () => {
     const w = createReferenceFight(1);
     const p = w.actors.find((a) => a.side === 'player')!;
-    const g = w.actors.find((a) => a.side === 'enemy')!;
-    g.alive = false;
-    g.hp = 0;
+    for (const g of w.actors.filter((a) => a.side === 'enemy')) {
+      g.alive = false;
+      g.hp = 0;
+    }
     expect(worstIncomingHit(w, p)).toBeNull();
     const digest = buildDigest(w, p);
     expect(digest.character.survivable_hits).toBeUndefined();
