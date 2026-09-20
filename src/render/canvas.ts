@@ -81,6 +81,28 @@ function drawGround(ctx: CanvasRenderingContext2D, g: GroundEffect, t: ViewTrans
   ctx.fill();
 }
 
+/** Reticle + asterisk — shape, not just color, so a marked enemy is readable. */
+function drawArcaneMark(
+  ctx: CanvasRenderingContext2D,
+  p: { x: number; y: number },
+  r: number,
+): void {
+  ctx.strokeStyle = '#c084fc';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 4; i++) {
+    const a = Math.PI / 4 + (i * Math.PI) / 2;
+    ctx.beginPath();
+    ctx.moveTo(p.x + Math.cos(a) * (r + 5), p.y + Math.sin(a) * (r + 5));
+    ctx.lineTo(p.x + Math.cos(a) * (r + 11), p.y + Math.sin(a) * (r + 11));
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#e2e8f0';
+  ctx.font = `bold ${Math.max(11, r * 0.95)}px ui-monospace, monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('*', p.x, p.y - r - 5);
+}
+
 function drawPuck(
   ctx: CanvasRenderingContext2D,
   a: Actor,
@@ -117,6 +139,10 @@ function drawPuck(
     ctx.strokeStyle = a.outline ?? '#84CC16';
     ctx.lineWidth = 2;
     ctx.stroke();
+  }
+
+  if (a.statuses.some((s) => s.type === 'damage_taken_up')) {
+    drawArcaneMark(ctx, p, r);
   }
 
   // Glyph

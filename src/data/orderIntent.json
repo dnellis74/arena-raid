@@ -45,6 +45,10 @@
     {
       "pattern": "slow|glyph|hamper|impede",
       "abilityId": "glyph_of_slowing"
+    },
+    {
+      "pattern": "mark|amplify|vulnerable|weaken|take more damage",
+      "abilityId": "arcane_mark"
     }
   ]
 }

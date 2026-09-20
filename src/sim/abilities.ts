@@ -147,12 +147,14 @@ export function resolveAbility(
       target.forceRetargetUntil = world.time + fx.duration;
     }
     if (fx.type === 'damage_taken_up' && target && target.alive) {
+      target.statuses = target.statuses.filter((s) => s.type !== 'damage_taken_up');
       target.statuses.push({
         type: 'damage_taken_up',
         remaining: fx.duration,
         factor: fx.factor,
         sourceId: caster.id,
       });
+      pushFloating(world, target.pos, 'mark', '#c084fc');
     }
   }
 }

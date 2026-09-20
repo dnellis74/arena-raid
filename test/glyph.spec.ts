@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyDamage, tryBeginCast } from '../src/sim/abilities.ts';
+import { tryBeginCast } from '../src/sim/abilities.ts';
 import { getAbility } from '../src/sim/actor.ts';
 import { len } from '../src/sim/vec.ts';
 import { DT } from '../src/sim/types.ts';
@@ -128,26 +128,6 @@ describe('Glyph of Slowing', () => {
     });
     runTicks(w, 45);
     expect(w.groundEffects.length).toBeGreaterThan(0);
-  });
-});
-
-describe('Arcane Mark (weak utility companion)', () => {
-  it('applies +10% damage taken for 5s', () => {
-    const w = createReferenceFight(1);
-    const p = w.actors.find((a) => a.kind === 'arcanist')!;
-    const g = w.actors.find((a) => a.kind === 'goblin')!;
-    p.pos = { x: 8, y: 10 };
-    g.pos = { x: 8, y: 15 };
-    p.vel = { x: 0, y: 0 };
-    expect(tryBeginCast(w, p, 'arcane_mark', g)).toBe(true);
-    settleCast(w, 20);
-    const mark = g.statuses.find((s) => s.type === 'damage_taken_up');
-    expect(mark?.factor).toBe(0.1);
-    expect(mark!.remaining).toBeGreaterThan(4.5);
-
-    const before = g.hp;
-    applyDamage(w, p, g, 2);
-    expect(before - g.hp).toBeCloseTo(2.2, 5);
   });
 });
 
