@@ -1,5 +1,5 @@
-import encounters from '../data/encounters.json';
-import statesData from '../data/states.json';
+import encounters from '../data/encounters.json' with { type: 'json' };
+import statesData from '../data/states.json' with { type: 'json' };
 
 export type ActorId = string;
 export type Side = 'player' | 'enemy';

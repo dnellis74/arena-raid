@@ -1,4 +1,4 @@
-import orderIntent from '../data/orderIntent.json';
+import orderIntent from '../data/orderIntent.json' with { type: 'json' };
 import type { AbilityId, StateId } from '../sim/types.ts';
 
 /**

@@ -1,6 +1,6 @@
-import bands from '../data/bands.json';
-import encounters from '../data/encounters.json';
-import prompts from '../data/prompts.json';
+import bands from '../data/bands.json' with { type: 'json' };
+import encounters from '../data/encounters.json' with { type: 'json' };
+import prompts from '../data/prompts.json' with { type: 'json' };
 import { getAbility } from '../sim/actor.ts';
 import { BEHAVIOR_CRITERIA, type AbilityId, type Actor, type StateId } from '../sim/types.ts';
 import type { DecideDigest } from './digest.ts';

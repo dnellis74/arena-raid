@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import digestBuckets from '../src/data/digestBuckets.json';
+import digestBuckets from '../src/data/digestBuckets.json' with { type: 'json' };
 import { createReferenceFight, setPartyOrder } from '../src/sim/world.ts';
 import { stepWorld, runTicks } from '../src/sim/step.ts';
 import { DT } from '../src/sim/types.ts';

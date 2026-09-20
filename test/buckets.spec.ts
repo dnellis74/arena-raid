@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import digestBuckets from '../src/data/digestBuckets.json';
+import digestBuckets from '../src/data/digestBuckets.json' with { type: 'json' };
 import {
   CONDITION_BANDS,
   conditionFromFraction,

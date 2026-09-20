@@ -1,6 +1,6 @@
-import abilitiesData from '../data/abilities.json';
-import classesData from '../data/classes.json';
-import monstersData from '../data/monsters.json';
+import abilitiesData from '../data/abilities.json' with { type: 'json' };
+import classesData from '../data/classes.json' with { type: 'json' };
+import monstersData from '../data/monsters.json' with { type: 'json' };
 import type {
   Ability,
   AbilityId,

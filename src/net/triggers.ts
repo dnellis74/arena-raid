@@ -1,4 +1,4 @@
-import triggers from '../data/triggers.json';
+import triggers from '../data/triggers.json' with { type: 'json' };
 import { actorUsesDecide } from '../sim/actor.ts';
 import {
   conditionOf,

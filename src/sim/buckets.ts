@@ -1,5 +1,5 @@
-import bands from '../data/bands.json';
-import digestBuckets from '../data/digestBuckets.json';
+import bands from '../data/bands.json' with { type: 'json' };
+import digestBuckets from '../data/digestBuckets.json' with { type: 'json' };
 import type { RangeBandId, Vec2 } from './types.ts';
 import { ARENA_H, ARENA_W } from './types.ts';
 import { clamp, dist, len, norm, sub } from './vec.ts';

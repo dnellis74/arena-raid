@@ -1,4 +1,4 @@
-import encounters from '../data/encounters.json';
+import encounters from '../data/encounters.json' with { type: 'json' };
 import { createActor } from './actor.ts';
 import { edgeGap } from './buckets.ts';
 import { mulberry32, type Rng } from './rng.ts';

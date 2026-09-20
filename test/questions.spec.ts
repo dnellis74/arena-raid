@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import digestBuckets from '../src/data/digestBuckets.json';
+import digestBuckets from '../src/data/digestBuckets.json' with { type: 'json' };
 import type { DecideDigest } from '../src/net/digest.ts';
 import { offlineDecide } from '../src/net/offlinePolicy.ts';
 import { buildQuestions, type GoldenCase } from '../src/net/questions.ts';
