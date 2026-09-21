@@ -13,5 +13,8 @@
   },
   "duelist": {
     "requestOnContactWhileHolding": true
+  },
+  "hobgoblin": {
+    "requestOnContactWhileHolding": false
   }
 }

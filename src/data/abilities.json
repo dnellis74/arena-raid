@@ -55,6 +55,17 @@
     "windup": 0.35,
     "blurb": "a heavy melee swing that only works within arm's reach"
   },
+  "crossbow_bolt": {
+    "id": "crossbow_bolt",
+    "name": "Crossbow Bolt",
+    "kind": "attack",
+    "delivery": "ranged",
+    "range": 11,
+    "damage": 5,
+    "cooldown": 1.8,
+    "windup": 0.45,
+    "blurb": "a heavy bolt that hits hard from a long way off"
+  },
   "shield_bash": {
     "id": "shield_bash",
     "name": "Shield Bash",

@@ -13,5 +13,20 @@
     "defaultBand": "contact",
     "defaultAbilityOrder": ["rusty_cleaver"],
     "standingOrder": "Charge the nearest enemy and keep hitting it. Never back off."
+  },
+  "hobgoblin": {
+    "id": "hobgoblin",
+    "name": "Hobgoblin",
+    "role": "a disciplined shooter that holds the back line and fires a crossbow",
+    "glyph": "H",
+    "outline": "#F59E0B",
+    "hp": 30,
+    "moveSpeed": 3.0,
+    "radius": 0.55,
+    "abilities": ["crossbow_bolt"],
+    "defaultState": "hold_and_shoot",
+    "defaultBand": "well_clear",
+    "defaultAbilityOrder": ["crossbow_bolt"],
+    "standingOrder": "Hold your ground and shoot anyone who comes in range. Do not charge."
   }
 }

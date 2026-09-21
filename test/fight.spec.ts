@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import classes from '../src/data/classes.json' with { type: 'json' };
 import digestBuckets from '../src/data/digestBuckets.json' with { type: 'json' };
+import { tryBeginCast } from '../src/sim/abilities.ts';
+import { getAbility } from '../src/sim/actor.ts';
 import { createReferenceFight, setPartyOrder } from '../src/sim/world.ts';
 import { stepWorld, runTicks } from '../src/sim/step.ts';
 import { DT } from '../src/sim/types.ts';
@@ -86,36 +88,73 @@ describe('mulberry32', () => {
 });
 
 describe('actors move collide attack die', () => {
-  it('spawns all four classes and two goblins and can kill', () => {
+  it('spawns the full party vs four goblins and a hobgoblin and can kill', () => {
     const w = createReferenceFight(1);
-    expect(w.actors).toHaveLength(6);
+    expect(w.actors).toHaveLength(9);
     const p = w.actors.find((a) => a.kind === 'arcanist')!;
     const v = w.actors.find((a) => a.kind === 'vanguard')!;
     const ward = w.actors.find((a) => a.kind === 'warden')!;
     const d = w.actors.find((a) => a.kind === 'duelist')!;
     const goblins = w.actors.filter((a) => a.kind === 'goblin');
+    const hob = w.actors.find((a) => a.kind === 'hobgoblin')!;
     expect(p.hp).toBe(24);
     expect(v.hp).toBe(40);
     expect(ward.hp).toBe(28);
     expect(d.hp).toBe(22);
-    expect(goblins).toHaveLength(2);
+    expect(goblins).toHaveLength(4);
     expect(goblins.every((g) => g.hp === 20)).toBe(true);
+    expect(hob.hp).toBe(30);
+    expect(hob.state).toBe('hold_and_shoot');
+    expect(hob.abilities).toEqual(['crossbow_bolt']);
 
     // Force close combat
-    p.state = 'close_and_attack';
-    v.state = 'close_and_attack';
-    ward.state = 'close_and_attack';
-    d.state = 'close_and_attack';
+    for (const a of [p, v, ward, d, ...goblins, hob]) {
+      a.state = 'close_and_attack';
+    }
     p.pos = { x: 8, y: 14 };
     v.pos = { x: 9, y: 14 };
     ward.pos = { x: 7, y: 14 };
     d.pos = { x: 10, y: 14 };
-    goblins[0]!.state = 'close_and_attack';
-    goblins[1]!.state = 'close_and_attack';
     goblins[0]!.pos = { x: 8, y: 15.2 };
     goblins[1]!.pos = { x: 9, y: 15.2 };
-    runTicks(w, 60 * 15);
+    goblins[2]!.pos = { x: 7, y: 15.2 };
+    goblins[3]!.pos = { x: 10, y: 15.2 };
+    hob.pos = { x: 8.5, y: 15.5 };
+    runTicks(w, 60 * 20);
     expect(w.matchOver).toBe(true);
+  });
+});
+
+describe('Hobgoblin', () => {
+  it('spawns holding with a crossbow that hits from range', () => {
+    const w = createReferenceFight(1);
+    const hob = w.actors.find((a) => a.kind === 'hobgoblin')!;
+    const p = w.actors.find((a) => a.kind === 'arcanist')!;
+    expect(hob.outline).toBe('#F59E0B');
+    expect(hob.glyph).toBe('H');
+    expect(hob.state).toBe('hold_and_shoot');
+    expect(hob.moveSpeed).toBe(3.0);
+
+    const bolt = getAbility('crossbow_bolt');
+    expect(bolt.delivery).toBe('ranged');
+    expect(bolt.range).toBe(11);
+    expect(bolt.damage).toBe(5);
+    expect(bolt.cooldown).toBe(1.8);
+    expect(bolt.windup).toBe(0.45);
+
+    // Isolate: freeze everyone else, put hob and target in bolt range
+    for (const a of w.actors) {
+      a.state = 'hold_and_shoot';
+      a.vel = { x: 0, y: 0 };
+    }
+    hob.pos = { x: 8, y: 18 };
+    p.pos = { x: 8, y: 10 };
+    hob.stateParams.targetId = p.id;
+    hob.stateParams.abilityPriority = ['crossbow_bolt'];
+    const hp = p.hp;
+    expect(tryBeginCast(w, hob, 'crossbow_bolt', p)).toBe(true);
+    runTicks(w, Math.ceil(0.6 / DT));
+    expect(hp - p.hp).toBe(5);
   });
 });
 
