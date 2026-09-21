@@ -41,7 +41,8 @@
     "abilities": ["mending_lash", "staff_swing", "suture", "cleanse"],
     "defaultState": "hold_and_shoot",
     "defaultBand": "just_clear",
-    "defaultAbilityOrder": ["mending_lash", "suture", "cleanse", "staff_swing"]
+    "defaultAbilityOrder": ["mending_lash", "suture", "cleanse", "staff_swing"],
+    "standingOrder": "hold mid range and keep allies healed. when badly hurt stay clear and keep healing"
   },
   "duelist": {
     "id": "duelist",

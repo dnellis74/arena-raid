@@ -172,6 +172,13 @@ const cases: GoldenCase[] = [
     expectedBehavior: 'close_and_attack',
   },
   {
+    id: 'warden-standing-hold',
+    standingOrder: 'hold mid range and keep allies healed',
+    partyOrder: null,
+    situation: {},
+    expectedBehavior: 'hold_and_shoot',
+  },
+  {
     id: 'party-only-skirmish',
     standingOrder: null,
     partyOrder: 'everyone keep distance and kite',

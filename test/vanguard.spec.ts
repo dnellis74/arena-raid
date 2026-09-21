@@ -39,13 +39,14 @@ describe('Vanguard spawn', () => {
     expect(p.partyOrder).toBeNull();
   });
 
-  it('joins the arcanist against two goblins in the default fight', () => {
+  it('joins the arcanist and warden against two goblins in the default fight', () => {
     const w = createReferenceFight(1);
     expect(w.actors.map((a) => a.kind).sort()).toEqual([
       'arcanist',
       'goblin',
       'goblin',
       'vanguard',
+      'warden',
     ]);
     const a = w.actors.find((x) => x.kind === 'arcanist')!;
     const v = w.actors.find((x) => x.kind === 'vanguard')!;

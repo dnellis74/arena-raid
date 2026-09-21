@@ -65,6 +65,22 @@
     {
       "pattern": "throw|cleaver|toss",
       "abilityId": "thrown_cleaver"
+    },
+    {
+      "pattern": "suture|big heal|strong heal|patch (them|him|her|it)? up",
+      "abilityId": "suture"
+    },
+    {
+      "pattern": "cleanse|dispel|purge|remove (the )?debuff",
+      "abilityId": "cleanse"
+    },
+    {
+      "pattern": "lash|mending",
+      "abilityId": "mending_lash"
+    },
+    {
+      "pattern": "staff swing|swing (the )?staff",
+      "abilityId": "staff_swing"
     }
   ]
 }

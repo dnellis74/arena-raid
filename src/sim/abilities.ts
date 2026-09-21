@@ -34,7 +34,10 @@ export function tryBeginCast(
   if (!actor.alive || actor.casting) return false;
   if ((actor.cooldowns[abilityId] ?? 0) > 0) return false;
   const ab = getAbility(abilityId);
-  if (ab.delivery === 'ground') {
+  if (ab.delivery === 'ally') {
+    if (!target || !target.alive || target.side !== actor.side) return false;
+    if (gapTo(actor, target) > ab.range + 0.05) return false;
+  } else if (ab.delivery === 'ground') {
     const p = point ?? (target ? target.pos : undefined);
     if (!p) return false;
     if (groundOutOfRange(actor, p, target, ab.range, 0.05)) return false;
@@ -91,11 +94,14 @@ export function resolveAbility(
     }
   }
 
-  if (ab.delivery === 'ally' && target && target.alive) {
+  if (ab.delivery === 'ally') {
+    if (!target || !target.alive || target.side !== caster.side) return;
     if (gapTo(caster, target) > ab.range + 0.15) return;
     if (ab.healing) applyHeal(world, target, ab.healing);
     if (ab.id === 'cleanse') {
-      target.statuses = target.statuses.filter((s) => s.type !== 'debuff');
+      // Remove one harmful effect (debuff marker). Near-useless until debuffs exist.
+      const idx = target.statuses.findIndex((s) => s.type === 'debuff');
+      if (idx >= 0) target.statuses.splice(idx, 1);
     }
   }
 
@@ -160,8 +166,27 @@ export function resolveAbility(
   }
 }
 
-function lowestHpAlly(world: World, caster: Actor): Actor | null {
-  const list = [caster, ...allies(world, caster)];
+/** Lowest HP-fraction living ally including self. Used by Mending Lash splash heal. */
+export function lowestHpAlly(world: World, caster: Actor): Actor | null {
+  const list = [caster, ...allies(world, caster)].filter((a) => a.alive);
+  if (list.length === 0) return null;
+  let best = list[0]!;
+  for (const a of list) {
+    if (a.hp / a.hpMax < best.hp / best.hpMax) best = a;
+  }
+  return best;
+}
+
+/** Ally-delivery heal target: lowest HP-fraction living ally (incl. self) in range. */
+export function pickHealTarget(
+  world: World,
+  caster: Actor,
+  range: number,
+): Actor | null {
+  const list = [caster, ...allies(world, caster)].filter(
+    (a) => a.alive && gapTo(caster, a) <= range + 0.05,
+  );
+  if (list.length === 0) return null;
   let best = list[0]!;
   for (const a of list) {
     if (a.hp / a.hpMax < best.hp / best.hpMax) best = a;

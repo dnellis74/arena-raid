@@ -1,7 +1,7 @@
 {
   "arena": { "w": 16, "h": 25 },
   "referenceFight": {
-    "id": "ref_2v2",
+    "id": "ref_3v2",
     "allowedStates": [
       "hold_and_shoot",
       "close_and_attack",
@@ -20,6 +20,12 @@
         "side": "player",
         "kind": "vanguard",
         "pos": { "x": 10, "y": 11 }
+      },
+      {
+        "id": "p3",
+        "side": "player",
+        "kind": "warden",
+        "pos": { "x": 8, "y": 9 }
       },
       {
         "id": "e1",

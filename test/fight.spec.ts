@@ -86,22 +86,26 @@ describe('mulberry32', () => {
 });
 
 describe('actors move collide attack die', () => {
-  it('spawns arcanist, vanguard, and two goblins and can kill', () => {
+  it('spawns arcanist, vanguard, warden, and two goblins and can kill', () => {
     const w = createReferenceFight(1);
-    expect(w.actors).toHaveLength(4);
+    expect(w.actors).toHaveLength(5);
     const p = w.actors.find((a) => a.kind === 'arcanist')!;
     const v = w.actors.find((a) => a.kind === 'vanguard')!;
+    const ward = w.actors.find((a) => a.kind === 'warden')!;
     const goblins = w.actors.filter((a) => a.kind === 'goblin');
     expect(p.hp).toBe(24);
     expect(v.hp).toBe(40);
+    expect(ward.hp).toBe(28);
     expect(goblins).toHaveLength(2);
     expect(goblins.every((g) => g.hp === 20)).toBe(true);
 
     // Force close combat
     p.state = 'close_and_attack';
     v.state = 'close_and_attack';
+    ward.state = 'close_and_attack';
     p.pos = { x: 8, y: 14 };
     v.pos = { x: 9, y: 14 };
+    ward.pos = { x: 7, y: 14 };
     goblins[0]!.state = 'close_and_attack';
     goblins[1]!.state = 'close_and_attack';
     goblins[0]!.pos = { x: 8, y: 15.2 };
@@ -420,8 +424,7 @@ describe('decide cadence', () => {
 
   it('skips decide for fixed-role goblin; players still decide', () => {
     const w = createReferenceFight(1);
-    const p = w.actors.find((a) => a.kind === 'arcanist')!;
-    const v = w.actors.find((a) => a.kind === 'vanguard')!;
+    const players = w.actors.filter((a) => a.side === 'player');
     const g = w.actors.find((a) => a.kind === 'goblin')!;
     const goblinStartY = g.pos.y;
     expect(g.state).toBe('close_and_attack');
@@ -429,10 +432,9 @@ describe('decide cadence', () => {
     runHeadlessOffline(w, 8);
 
     expect(g.decisionLog.length).toBe(0);
-    expect(w.decisionLog.every((e) => e.actorId === p.id || e.actorId === v.id)).toBe(
-      true,
-    );
-    expect(p.decisionLog.length + v.decisionLog.length).toBeGreaterThan(0);
+    const playerIds = new Set(players.map((a) => a.id));
+    expect(w.decisionLog.every((e) => playerIds.has(e.actorId))).toBe(true);
+    expect(players.reduce((n, a) => n + a.decisionLog.length, 0)).toBeGreaterThan(0);
     expect(g.state).toBe('close_and_attack');
     expect(g.pos.y).toBeLessThan(goblinStartY);
   });

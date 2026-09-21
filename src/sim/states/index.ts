@@ -1,4 +1,4 @@
-import { tryBeginCast } from '../abilities.ts';
+import { pickHealTarget, tryBeginCast } from '../abilities.ts';
 import { bandToUnits, wallDistance } from '../buckets.ts';
 import { getAbility } from '../actor.ts';
 import { headingHitsWall, steer } from '../steering.ts';
@@ -70,12 +70,34 @@ function readyAbility(
     if (!actor.abilities.includes(id)) continue;
     if ((actor.cooldowns[id] ?? 0) > 0) continue;
     const ab = getAbility(id);
-    if (minRange !== undefined && ab.delivery !== 'self' && ab.range < minRange) {
+    // Self / ally utilities are not gated on hostile gap.
+    if (
+      minRange !== undefined &&
+      ab.delivery !== 'self' &&
+      ab.delivery !== 'ally' &&
+      ab.range < minRange
+    ) {
       continue;
     }
     return id;
   }
   return null;
+}
+
+/** Cast with the correct target kind: ally heals vs hostile attacks. */
+function tryCastAbility(
+  world: World,
+  actor: Actor,
+  abilityId: AbilityId,
+  hostile: Actor | null,
+): boolean {
+  const ab = getAbility(abilityId);
+  if (ab.delivery === 'ally') {
+    const ally = pickHealTarget(world, actor, ab.range);
+    if (!ally) return false;
+    return tryBeginCast(world, actor, abilityId, ally);
+  }
+  return tryBeginCast(world, actor, abilityId, hostile);
 }
 
 function applyMove(world: World, actor: Actor, intent: Vec2, moveScale = 1): void {
@@ -105,22 +127,27 @@ export const closeAndAttack: StateHandler = (world, actor) => {
   const id = readyAbility(actor, priority);
   if (!id) return;
   const ab = getAbility(id);
-  if (ab.delivery === 'self' || gap <= shortest + 0.05) {
-    tryBeginCast(world, actor, id, target);
+  if (ab.delivery === 'self' || ab.delivery === 'ally' || gap <= shortest + 0.05) {
+    tryCastAbility(world, actor, id, target);
   }
 };
 
 export const holdAndShoot: StateHandler = (world, actor) => {
   actor.vel = zero();
   const target = pickTarget(world, actor);
-  if (!target) return;
+  if (!target) {
+    // Ally heals can still fire with no living hostile (e.g. after a kill).
+    const id = readyAbility(actor, actor.stateParams.abilityPriority);
+    if (id && getAbility(id).delivery === 'ally') tryCastAbility(world, actor, id, null);
+    return;
+  }
   actor.stateParams.targetId = target.id;
   const gap = gapTo(actor, target);
   const id = readyAbility(actor, actor.stateParams.abilityPriority);
   if (!id) return;
   const ab = getAbility(id);
-  if (ab.delivery === 'self' || gap <= ab.range) {
-    tryBeginCast(world, actor, id, target);
+  if (ab.delivery === 'self' || ab.delivery === 'ally' || gap <= ab.range) {
+    tryCastAbility(world, actor, id, target);
   }
 };
 
@@ -153,7 +180,7 @@ export const skirmish: StateHandler = (world, actor) => {
     // and we are still outside enemy reach, otherwise keep fleeing.
     if (id && gap > 1.5 && !actor.casting) {
       actor.vel = zero();
-      tryBeginCast(world, actor, id, target);
+      tryCastAbility(world, actor, id, target);
     } else {
       applyMove(world, actor, skirmishFleeIntent(world, actor, away));
     }
@@ -169,7 +196,7 @@ export const skirmish: StateHandler = (world, actor) => {
     const mid = (min + max) / 2;
     if (id) {
       actor.vel = zero();
-      tryBeginCast(world, actor, id, target);
+      tryCastAbility(world, actor, id, target);
     } else if (gap < mid && isApproaching(target, actor) && !actor.casting) {
       applyMove(world, actor, skirmishFleeIntent(world, actor, away));
     } else {
