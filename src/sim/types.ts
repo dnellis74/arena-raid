@@ -80,6 +80,14 @@ export interface GroundEffect {
   ownerId: ActorId;
 }
 
+/** Delayed strike from multi-hit abilities (e.g. Flurry). */
+export interface PendingStrike {
+  resolveAt: number;
+  sourceId: ActorId;
+  targetId: ActorId;
+  damage: number;
+}
+
 export interface FloatingText {
   id: string;
   pos: Vec2;

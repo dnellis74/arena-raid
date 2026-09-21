@@ -179,6 +179,13 @@ const cases: GoldenCase[] = [
     expectedBehavior: 'hold_and_shoot',
   },
   {
+    id: 'duelist-standing-skirmish',
+    standingOrder: 'dash in for a flurry then slip away. keep skirmishing',
+    partyOrder: null,
+    situation: {},
+    expectedBehavior: 'skirmish',
+  },
+  {
     id: 'party-only-skirmish',
     standingOrder: null,
     partyOrder: 'everyone keep distance and kite',

@@ -56,6 +56,7 @@
     "abilities": ["flurry", "thrown_dagger", "shadowstep", "feint"],
     "defaultState": "skirmish",
     "defaultBand": "just_clear",
-    "defaultAbilityOrder": ["flurry", "shadowstep", "feint", "thrown_dagger"]
+    "defaultAbilityOrder": ["flurry", "shadowstep", "feint", "thrown_dagger"],
+    "standingOrder": "dash in for a flurry then slip away. keep skirmishing. when badly hurt stay clear and throw"
   }
 }

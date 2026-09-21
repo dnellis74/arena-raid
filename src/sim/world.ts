@@ -9,6 +9,7 @@ import type {
   Encounter,
   FloatingText,
   GroundEffect,
+  PendingStrike,
   Side,
   StateId,
   Vec2,
@@ -23,6 +24,7 @@ export interface World {
   time: number;
   rng: Rng;
   groundEffects: GroundEffect[];
+  pendingStrikes: PendingStrike[];
   floatingTexts: FloatingText[];
   decisionLog: DecisionEntry[];
   partyOrder: string | null;
@@ -78,6 +80,7 @@ export function createReferenceFight(
     time: 0,
     rng: mulberry32(seed),
     groundEffects: [],
+    pendingStrikes: [],
     floatingTexts: [],
     decisionLog: [],
     partyOrder: null,

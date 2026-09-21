@@ -86,16 +86,18 @@ describe('mulberry32', () => {
 });
 
 describe('actors move collide attack die', () => {
-  it('spawns arcanist, vanguard, warden, and two goblins and can kill', () => {
+  it('spawns all four classes and two goblins and can kill', () => {
     const w = createReferenceFight(1);
-    expect(w.actors).toHaveLength(5);
+    expect(w.actors).toHaveLength(6);
     const p = w.actors.find((a) => a.kind === 'arcanist')!;
     const v = w.actors.find((a) => a.kind === 'vanguard')!;
     const ward = w.actors.find((a) => a.kind === 'warden')!;
+    const d = w.actors.find((a) => a.kind === 'duelist')!;
     const goblins = w.actors.filter((a) => a.kind === 'goblin');
     expect(p.hp).toBe(24);
     expect(v.hp).toBe(40);
     expect(ward.hp).toBe(28);
+    expect(d.hp).toBe(22);
     expect(goblins).toHaveLength(2);
     expect(goblins.every((g) => g.hp === 20)).toBe(true);
 
@@ -103,9 +105,11 @@ describe('actors move collide attack die', () => {
     p.state = 'close_and_attack';
     v.state = 'close_and_attack';
     ward.state = 'close_and_attack';
+    d.state = 'close_and_attack';
     p.pos = { x: 8, y: 14 };
     v.pos = { x: 9, y: 14 };
     ward.pos = { x: 7, y: 14 };
+    d.pos = { x: 10, y: 14 };
     goblins[0]!.state = 'close_and_attack';
     goblins[1]!.state = 'close_and_attack';
     goblins[0]!.pos = { x: 8, y: 15.2 };

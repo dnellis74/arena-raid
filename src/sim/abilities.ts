@@ -87,7 +87,12 @@ export function resolveAbility(
   if (ab.delivery === 'melee' || ab.delivery === 'ranged') {
     if (!target || !target.alive) return;
     if (gapTo(caster, target) > ab.range + 0.15) return;
-    applyDamage(world, caster, target, ab.damage ?? 0);
+    const multi = ab.effects?.find((fx) => fx.type === 'multi_hit');
+    if (multi && multi.type === 'multi_hit') {
+      scheduleMultiHit(world, caster, target, multi.hits, multi.perHit, multi.span);
+    } else {
+      applyDamage(world, caster, target, ab.damage ?? 0);
+    }
     if (ab.healing && ab.id === 'mending_lash') {
       const ally = lowestHpAlly(world, caster);
       if (ally) applyHeal(world, ally, ab.healing);
@@ -132,17 +137,20 @@ export function resolveAbility(
         applyAura(world, caster, 'damage_up', fx.duration, fx.factor, fx.radius ?? 0);
       } else if (fx.type === 'dodge_window') {
         caster.dodgeUntil = world.time + fx.duration;
+        pushFloating(world, caster.pos, 'feint', '#fca5a5');
       } else if (fx.type === 'dash') {
         const t = caster.stateParams.targetId
           ? getActor(world, caster.stateParams.targetId)
           : null;
         const dir = t ? norm(sub(t.pos, caster.pos)) : { x: 0, y: -1 };
+        // Instant teleport — ignores other actors (collision is not applied mid-dash).
         caster.pos = clampToArena(
           add(caster.pos, scale(dir, Math.min(fx.range, ab.range))),
           caster.radius,
           world.encounter.arenaW,
           world.encounter.arenaH,
         );
+        pushFloating(world, caster.pos, 'dash', '#fca5a5');
       }
     }
   }
@@ -163,6 +171,76 @@ export function resolveAbility(
       });
       pushFloating(world, target.pos, 'mark', '#c084fc');
     }
+  }
+}
+
+/** Schedule multi-hit strikes evenly over `span` (first hit immediate). */
+function scheduleMultiHit(
+  world: World,
+  source: Actor,
+  target: Actor,
+  hits: number,
+  perHit: number,
+  span: number,
+): void {
+  const n = Math.max(1, hits);
+  const step = n <= 1 ? 0 : span / (n - 1);
+  for (let i = 0; i < n; i++) {
+    const resolveAt = world.time + i * step;
+    if (i === 0) {
+      applyDamage(world, source, target, perHit);
+    } else {
+      world.pendingStrikes.push({
+        resolveAt,
+        sourceId: source.id,
+        targetId: target.id,
+        damage: perHit,
+      });
+    }
+  }
+}
+
+/** Resolve any pending multi-hit strikes due at or before world.time. */
+export function tickPendingStrikes(world: World): void {
+  if (world.pendingStrikes.length === 0) return;
+  const due: typeof world.pendingStrikes = [];
+  const later: typeof world.pendingStrikes = [];
+  for (const s of world.pendingStrikes) {
+    if (s.resolveAt <= world.time + 1e-9) due.push(s);
+    else later.push(s);
+  }
+  world.pendingStrikes = later;
+  for (const s of due) {
+    const source = getActor(world, s.sourceId);
+    const target = getActor(world, s.targetId);
+    if (!source?.alive || !target?.alive) continue;
+    applyDamage(world, source, target, s.damage);
+  }
+}
+
+/**
+ * Automatic Feint: if a Duelist has Feint ready and a nearby enemy attack is
+ * about to land, dodge. Spec §7 — timing reaction owned by code, not Jev.
+ */
+export function tickFeintReaction(world: World): void {
+  for (const actor of world.actors) {
+    if (!actor.alive || !actor.abilities.includes('feint')) continue;
+    if ((actor.cooldowns.feint ?? 0) > 0) continue;
+    if (world.time < actor.dodgeUntil) continue;
+    if (actor.casting) continue;
+    const enemy = world.actors.find(
+      (a) =>
+        a.alive &&
+        a.side !== actor.side &&
+        a.casting !== null &&
+        getAbility(a.casting.abilityId).kind === 'attack',
+    );
+    if (!enemy || !enemy.casting) continue;
+    const ab = getAbility(enemy.casting.abilityId);
+    if (gapTo(actor, enemy) > ab.range + 0.5) continue;
+    // React in the last quarter-second of their windup.
+    if (enemy.casting.remaining > 0.25) continue;
+    tryBeginCast(world, actor, 'feint', null);
   }
 }
 

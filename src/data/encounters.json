@@ -1,7 +1,7 @@
 {
   "arena": { "w": 16, "h": 25 },
   "referenceFight": {
-    "id": "ref_3v2",
+    "id": "ref_4v2",
     "allowedStates": [
       "hold_and_shoot",
       "close_and_attack",
@@ -26,6 +26,12 @@
         "side": "player",
         "kind": "warden",
         "pos": { "x": 8, "y": 9 }
+      },
+      {
+        "id": "p4",
+        "side": "player",
+        "kind": "duelist",
+        "pos": { "x": 12, "y": 8 }
       },
       {
         "id": "e1",

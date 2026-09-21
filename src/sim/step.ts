@@ -1,4 +1,4 @@
-import { tickCasting } from './abilities.ts';
+import { tickCasting, tickFeintReaction, tickPendingStrikes } from './abilities.ts';
 import { clampToArena } from './buckets.ts';
 import { handlers } from './states/index.ts';
 import { DT } from './types.ts';
@@ -9,6 +9,9 @@ import { add, dist, len, norm, scale, sub } from './vec.ts';
 
 export function stepWorld(world: World, dt = DT): void {
   if (world.matchOver) return;
+
+  // Multi-hit follow-ups due from prior frames (time already advanced).
+  tickPendingStrikes(world);
 
   // Tick cooldowns, statuses, ground effects
   for (const actor of world.actors) {
@@ -39,6 +42,9 @@ export function stepWorld(world: World, dt = DT): void {
     if (!actor.alive) continue;
     handlers[actor.state](world, actor, dt);
   }
+
+  // Feint auto-reaction before casts resolve so the dodge window is armed.
+  tickFeintReaction(world);
 
   // Integrate positions
   for (const actor of world.actors) {

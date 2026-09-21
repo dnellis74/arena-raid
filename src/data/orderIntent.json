@@ -63,7 +63,7 @@
       "abilityId": "shield_bash"
     },
     {
-      "pattern": "throw|cleaver|toss",
+      "pattern": "cleaver|thrown cleaver",
       "abilityId": "thrown_cleaver"
     },
     {
@@ -81,6 +81,22 @@
     {
       "pattern": "staff swing|swing (the )?staff",
       "abilityId": "staff_swing"
+    },
+    {
+      "pattern": "shadowstep|dash|blink|step through",
+      "abilityId": "shadowstep"
+    },
+    {
+      "pattern": "flurry|burst",
+      "abilityId": "flurry"
+    },
+    {
+      "pattern": "feint|dodge|sidestep",
+      "abilityId": "feint"
+    },
+    {
+      "pattern": "dagger|throw.*dagger|toss.*dagger",
+      "abilityId": "thrown_dagger"
     }
   ]
 }

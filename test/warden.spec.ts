@@ -35,10 +35,11 @@ describe('Warden spawn', () => {
     expect(p.partyOrder).toBeNull();
   });
 
-  it('joins arcanist and vanguard against two goblins in the default fight', () => {
+  it('joins the full party against two goblins in the default fight', () => {
     const w = createReferenceFight(1);
     expect(w.actors.map((a) => a.kind).sort()).toEqual([
       'arcanist',
+      'duelist',
       'goblin',
       'goblin',
       'vanguard',

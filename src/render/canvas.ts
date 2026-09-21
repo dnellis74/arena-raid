@@ -153,6 +153,21 @@ function drawTaunt(
   ctx.fillText('!', p.x + r + 6, p.y - r);
 }
 
+/** Thin dash ring while Feint dodge window is active. */
+function drawFeint(
+  ctx: CanvasRenderingContext2D,
+  p: { x: number; y: number },
+  r: number,
+): void {
+  ctx.setLineDash([3, 3]);
+  ctx.strokeStyle = '#fca5a5';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, r + 6, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
 function drawPuck(
   ctx: CanvasRenderingContext2D,
   a: Actor,
@@ -203,6 +218,9 @@ function drawPuck(
   }
   if (a.forceRetargetTo && now < a.forceRetargetUntil) {
     drawTaunt(ctx, p, r);
+  }
+  if (now < a.dodgeUntil) {
+    drawFeint(ctx, p, r);
   }
 
   // Glyph
