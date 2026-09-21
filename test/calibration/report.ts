@@ -4,12 +4,14 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { StateId } from '../../src/sim/types.ts';
 import type { CalibrationTier } from './cases.ts';
+import type { ClosingPlayerKind } from './situation.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SNAPSHOT_DIR = join(HERE, 'snapshots');
 const QUESTIONS_PATH = join(HERE, '../../src/net/questions.ts');
 
 export interface RunRow {
+  kind: ClosingPlayerKind;
   tier: CalibrationTier;
   id: string;
   order: string;
@@ -26,10 +28,17 @@ export interface RunRow {
   repeatIndex: number;
 }
 
+type PassCounts = {
+  tier1Pass: string;
+  negativePass: string;
+  tier2SkirmishRate: string;
+};
+
 export interface SnapshotPayload {
   generatedAt: string;
   questionsGitSha: string;
   rows: Array<{
+    kind: ClosingPlayerKind;
     tier: CalibrationTier;
     id: string;
     order: string;
@@ -42,10 +51,8 @@ export interface SnapshotPayload {
     resolvedBehavior: StateId;
     result: RunRow['result'];
   }>;
-  summary: {
-    tier1Pass: string;
-    negativePass: string;
-    tier2SkirmishRate: string;
+  summary: PassCounts & {
+    byClass: Partial<Record<ClosingPlayerKind, PassCounts>>;
   };
 }
 
@@ -62,9 +69,10 @@ export function questionsGitSha(): string {
 
 export function printTable(rows: RunRow[]): void {
   const header = [
+    pad('class', 10),
     pad('tier', 5),
     pad('#', 4),
-    pad('order', 52),
+    pad('order', 48),
     pad('picked', 18),
     pad('P(skirm)', 10),
     pad('conf', 8),
@@ -75,9 +83,10 @@ export function printTable(rows: RunRow[]): void {
   for (const r of rows) {
     console.log(
       [
+        pad(r.kind, 10),
         pad(String(r.tier), 5),
         pad(r.id, 4),
-        pad(r.order, 52),
+        pad(r.order, 48),
         pad(r.picked, 18),
         pad(r.pSkirmish.toFixed(2), 10),
         pad(r.confidence.toFixed(2), 8),
@@ -87,22 +96,36 @@ export function printTable(rows: RunRow[]): void {
   }
 }
 
-export function printSummary(rows: RunRow[]): SnapshotPayload['summary'] {
+function summarize(rows: RunRow[]): PassCounts {
   const tier1 = rows.filter((r) => r.tier === 1);
   const negatives = rows.filter((r) => r.tier === 'N');
   const tier2 = rows.filter((r) => r.tier === 2);
-
-  const tier1Pass = `${tier1.filter((r) => r.result === 'PASS').length}/${tier1.length}`;
-  const negativePass = `${negatives.filter((r) => r.result === 'PASS').length}/${negatives.length}`;
   const tier2Skirmish = tier2.filter((r) => r.resolved === 'skirmish').length;
-  const tier2SkirmishRate = `${tier2Skirmish}/${tier2.length}`;
+  return {
+    tier1Pass: `${tier1.filter((r) => r.result === 'PASS').length}/${tier1.length}`,
+    negativePass: `${negatives.filter((r) => r.result === 'PASS').length}/${negatives.length}`,
+    tier2SkirmishRate: `${tier2Skirmish}/${tier2.length}`,
+  };
+}
 
+export function printSummary(rows: RunRow[]): SnapshotPayload['summary'] {
+  const kinds = [...new Set(rows.map((r) => r.kind))];
+  const byClass: SnapshotPayload['summary']['byClass'] = {};
   console.log('');
-  console.log(
-    `summary: tier1 ${tier1Pass}  negatives ${negativePass}  tier2 skirmish ${tier2SkirmishRate}`,
-  );
-
-  return { tier1Pass, negativePass, tier2SkirmishRate };
+  for (const kind of kinds) {
+    const stats = summarize(rows.filter((r) => r.kind === kind));
+    byClass[kind] = stats;
+    console.log(
+      `summary ${kind}: tier1 ${stats.tier1Pass}  negatives ${stats.negativePass}  tier2 skirmish ${stats.tier2SkirmishRate}`,
+    );
+  }
+  const overall = summarize(rows);
+  if (kinds.length > 1) {
+    console.log(
+      `summary: tier1 ${overall.tier1Pass}  negatives ${overall.negativePass}  tier2 skirmish ${overall.tier2SkirmishRate}`,
+    );
+  }
+  return { ...overall, byClass };
 }
 
 export function writeSnapshot(rows: RunRow[], summary: SnapshotPayload['summary']): string {
@@ -112,6 +135,7 @@ export function writeSnapshot(rows: RunRow[], summary: SnapshotPayload['summary'
     generatedAt,
     questionsGitSha: questionsGitSha(),
     rows: rows.map((r) => ({
+      kind: r.kind,
       tier: r.tier,
       id: r.id,
       order: r.order,

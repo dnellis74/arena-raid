@@ -37,6 +37,7 @@ Runs Vitest unit tests (`test/**/*.spec.ts`). Does **not** call live Jev and doe
 ```bash
 npm run calibrate:skirmish
 # optional: npm run calibrate:skirmish -- --repeats=5
+# optional: npm run calibrate:skirmish -- --class=vanguard
 ```
 
 Hits live Jev, costs tokens, requires `TYPESAFE_API_KEY`, and is **not** part of `npm test` / CI. Details: [`test/calibration/README.md`](./test/calibration/README.md).

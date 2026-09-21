@@ -2,6 +2,9 @@
  * Live Jev skirmish calibration — NOT a unit test.
  * Invoked via: npm run calibrate:skirmish
  * Requires TYPESAFE_API_KEY. Never run from vitest / CI watch.
+ *
+ * Runs the same order cases for Arcanist and Vanguard (class digest + default
+ * state). Filter with --class=arcanist or --class=vanguard.
  */
 import { applyBehaviorDecision } from '../../src/net/decide.ts';
 import type { DecideDigest } from '../../src/net/digest.ts';
@@ -18,6 +21,7 @@ import {
   ALLOWED_STATES,
   killDevServer,
   loadGoblinClosingFixture,
+  parseClasses,
   parseRepeats,
   requireApiKey,
 } from './runner.ts';
@@ -40,52 +44,56 @@ async function main(): Promise<void> {
   killDevServer();
   const apiKey = requireApiKey('calibrate:skirmish');
   const repeatsOverride = parseRepeats(process.argv.slice(2));
-  const fixtureBase = loadGoblinClosingFixture();
-  const { player } = createGoblinClosingWorld();
+  const kinds = parseClasses(process.argv.slice(2));
   const jev = createJevClient(apiKey);
 
   const rows: RunRow[] = [];
 
-  for (const c of CALIBRATION_CASES) {
-    const n = repeatsFor(c, repeatsOverride);
-    for (let i = 0; i < n; i++) {
-      const state: DecideDigest = {
-        ...fixtureBase,
-        character: { ...fixtureBase.character },
-        enemy: { ...fixtureBase.enemy },
-        orders: { given_directly_to_this_character: c.order },
-      };
-      player.standingOrder = c.order;
-      player.partyOrder = null;
-      player.state = 'hold_and_shoot';
+  for (const kind of kinds) {
+    const fixtureBase = loadGoblinClosingFixture(kind);
+    const { player } = createGoblinClosingWorld(1, kind);
 
-      const questions = buildDecideQuestions(player, state, ALLOWED_STATES);
-      const response = await jev.ask(state, questions);
-      const behavior = response.answers.behavior;
-      if (!behavior || behavior.type !== 'choice') {
-        throw new Error(`case ${c.id}: missing behavior choice answer`);
+    for (const c of CALIBRATION_CASES) {
+      const n = repeatsFor(c, repeatsOverride);
+      for (let i = 0; i < n; i++) {
+        const state: DecideDigest = {
+          ...fixtureBase,
+          character: { ...fixtureBase.character },
+          enemy: { ...fixtureBase.enemy },
+          orders: { given_directly_to_this_character: c.order },
+        };
+        player.standingOrder = c.order;
+        player.partyOrder = null;
+
+        const questions = buildDecideQuestions(player, state, ALLOWED_STATES);
+        const response = await jev.ask(state, questions);
+        const behavior = response.answers.behavior;
+        if (!behavior || behavior.type !== 'choice') {
+          throw new Error(`${kind} case ${c.id}: missing behavior choice answer`);
+        }
+
+        const resolved = applyBehaviorDecision({
+          current: player.state,
+          answers: response.answers,
+          allowedStates: ALLOWED_STATES,
+        }).state;
+
+        const choice = behavior.choice as StateId;
+        rows.push({
+          kind,
+          tier: c.tier,
+          id: c.id,
+          order: c.order,
+          picked: resolved,
+          choice,
+          pSkirmish: behavior.probabilities.skirmish ?? 0,
+          confidence: behavior.confidence,
+          probabilities: behavior.probabilities,
+          resolved,
+          result: grade(c, resolved),
+          repeatIndex: i,
+        });
       }
-
-      const resolved = applyBehaviorDecision({
-        current: 'hold_and_shoot',
-        answers: response.answers,
-        allowedStates: ALLOWED_STATES,
-      }).state;
-
-      const choice = behavior.choice as StateId;
-      rows.push({
-        tier: c.tier,
-        id: c.id,
-        order: c.order,
-        picked: resolved,
-        choice,
-        pSkirmish: behavior.probabilities.skirmish ?? 0,
-        confidence: behavior.confidence,
-        probabilities: behavior.probabilities,
-        resolved,
-        result: grade(c, resolved),
-        repeatIndex: i,
-      });
     }
   }
 

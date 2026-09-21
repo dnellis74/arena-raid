@@ -7,10 +7,16 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { DecideDigest } from '../../src/net/digest.ts';
 import type { StateId } from '../../src/sim/types.ts';
+import {
+  CLOSING_PLAYER_KINDS,
+  fixturePathFor,
+  type ClosingPlayerKind,
+} from './situation.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const CALIBRATION_DIR = HERE;
 export const FIXTURE_PATH = join(HERE, 'fixtures/situation.goblin-closing.json');
+export const CALIBRATION_CLASSES: ClosingPlayerKind[] = [...CLOSING_PLAYER_KINDS];
 
 export const ALLOWED_STATES: StateId[] = [
   'skirmish',
@@ -57,6 +63,25 @@ export function parseRepeats(argv: string[]): number | null {
   return null;
 }
 
-export function loadGoblinClosingFixture(): DecideDigest {
-  return JSON.parse(readFileSync(FIXTURE_PATH, 'utf8')) as DecideDigest;
+export function parseClasses(argv: string[]): ClosingPlayerKind[] {
+  for (const arg of argv) {
+    const m = arg.match(/^--class=(.+)$/);
+    if (m) {
+      const kind = m[1] as ClosingPlayerKind;
+      if (!CALIBRATION_CLASSES.includes(kind)) {
+        console.error(
+          `Unknown --class=${m[1]}. Use ${CALIBRATION_CLASSES.join('|')}.`,
+        );
+        process.exit(1);
+      }
+      return [kind];
+    }
+  }
+  return [...CALIBRATION_CLASSES];
+}
+
+export function loadGoblinClosingFixture(
+  kind: ClosingPlayerKind = 'arcanist',
+): DecideDigest {
+  return JSON.parse(readFileSync(fixturePathFor(kind), 'utf8')) as DecideDigest;
 }

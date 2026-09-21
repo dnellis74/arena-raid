@@ -1,0 +1,20 @@
+{
+  "character": {
+    "role": "a front-line defender who holds enemies in place up close",
+    "condition": "untouched",
+    "survivable_hits": "can take several more hits",
+    "current_behavior": "walking at the enemy to fight up close",
+    "ready_abilities": [
+      "Shield Bash: a solid melee bash that forces the enemy to focus on the basher",
+      "Thrown Cleaver: a weak thrown weapon that can hit from medium range",
+      "Bulwark: shields the caster and nearby allies so they take half damage for a short time",
+      "Battle Shout: a rallying shout that slightly boosts nearby allies' damage"
+    ],
+    "unavailable_abilities": []
+  },
+  "enemy": {
+    "kind": "goblin",
+    "condition": "untouched",
+    "hits_to_finish": "it will take several more hits to kill"
+  }
+}

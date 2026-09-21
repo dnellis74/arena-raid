@@ -1,30 +1,34 @@
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { howCloseBucket } from '../src/sim/buckets.ts';
 import { gapTo } from '../src/sim/world.ts';
 import {
   buildGoblinClosingDigest,
+  CLOSING_PLAYER_KINDS,
   createGoblinClosingWorld,
+  fixturePathFor,
+  type ClosingPlayerKind,
 } from './calibration/situation.ts';
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-const FIXTURE_PATH = join(
-  HERE,
-  'calibration/fixtures/situation.goblin-closing.json',
-);
+function loadFixture(kind: ClosingPlayerKind): unknown {
+  return JSON.parse(readFileSync(fixturePathFor(kind), 'utf8'));
+}
 
 describe('goblin-closing digest fixture lock', () => {
-  it('positions Case A so the goblin is a short run away', () => {
-    const { world, player } = createGoblinClosingWorld();
-    const goblin = world.actors.find((a) => a.side === 'enemy')!;
-    expect(howCloseBucket(gapTo(player, goblin))).toBe('a short run away');
-  });
+  it.each(CLOSING_PLAYER_KINDS)(
+    '%s positions Case A so the goblin is a short run away',
+    (kind) => {
+      const { world, player } = createGoblinClosingWorld(1, kind);
+      const goblin = world.actors.find((a) => a.side === 'enemy')!;
+      expect(player.kind).toBe(kind);
+      expect(howCloseBucket(gapTo(player, goblin))).toBe('a short run away');
+    },
+  );
 
-  it('buildDigest still matches situation.goblin-closing.json exactly', () => {
-    const expected = JSON.parse(readFileSync(FIXTURE_PATH, 'utf8'));
-    const actual = buildGoblinClosingDigest();
-    expect(actual).toEqual(expected);
-  });
+  it.each(CLOSING_PLAYER_KINDS)(
+    'buildDigest still matches the %s goblin-closing fixture exactly',
+    (kind) => {
+      expect(buildGoblinClosingDigest(1, kind)).toEqual(loadFixture(kind));
+    },
+  );
 });
