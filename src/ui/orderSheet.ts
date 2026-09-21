@@ -1,4 +1,5 @@
 import type { Actor } from '../sim/types.ts';
+import type { CombatLogEntry } from '../sim/combatLog.ts';
 import { formatDecision, renderProbabilityBars } from '../render/probabilityBars.ts';
 import { sheetVisibleFields } from './fog.ts';
 
@@ -31,6 +32,7 @@ export function createOrderSheet(root: HTMLElement): {
   showActor: (actor: Actor, debug: boolean) => void;
   showParty: (partyOrder: string | null) => void;
   hide: () => void;
+  showCombatLog: (entries: CombatLogEntry[]) => void;
   onSubmit: (cb: (text: string, scope: 'actor' | 'party') => void) => void;
   onClear: (cb: (scope: 'actor' | 'party') => void) => void;
   onClose: (cb: () => void) => void;
@@ -46,7 +48,7 @@ export function createOrderSheet(root: HTMLElement): {
   const controlBar = document.createElement('div');
   controlBar.style.cssText = `
     display: flex; gap: 8px; padding: 8px 12px; align-items: center;
-    border-bottom: 1px solid #1e293b;
+    border-bottom: 1px solid #1e293b; flex-shrink: 0;
   `;
   const partyBtn = document.createElement('button');
   partyBtn.textContent = 'Party order';
@@ -57,6 +59,15 @@ export function createOrderSheet(root: HTMLElement): {
   hint.style.cssText = 'font-size:11px;color:#64748b;';
   hint.textContent = 'Tap a puck to give orders';
   controlBar.appendChild(hint);
+
+  const combatLog = document.createElement('div');
+  combatLog.id = 'combat-log';
+  combatLog.setAttribute('aria-label', 'Combat log');
+  combatLog.style.cssText = `
+    display: flex; flex: 1; flex-direction: column; gap: 4px;
+    padding: 10px 12px; overflow: auto; min-height: 0;
+    font-size: 12px; line-height: 1.45; color: #cbd5e1;
+  `;
 
   const sheet = document.createElement('div');
   sheet.style.cssText = `
@@ -120,7 +131,7 @@ export function createOrderSheet(root: HTMLElement): {
 
   // Prompt + send/clear first; name/close and debug chrome below
   sheet.append(input, promptRow, header, debugPanel);
-  wrap.append(controlBar, sheet);
+  wrap.append(controlBar, combatLog, sheet);
   root.appendChild(wrap);
 
   let scope: 'actor' | 'party' = 'actor';
@@ -131,6 +142,13 @@ export function createOrderSheet(root: HTMLElement): {
   let lastSyncedKey: string | null = null;
   /** Latched on Send pointerdown so a mid-click showActor sync cannot wipe the text. */
   let submitTextLatch: string | null = null;
+  let lastCombatLogLen = -1;
+  let stickCombatLogToBottom = true;
+
+  combatLog.addEventListener('scroll', () => {
+    const dist = combatLog.scrollHeight - combatLog.scrollTop - combatLog.clientHeight;
+    stickCombatLogToBottom = dist < 24;
+  });
 
   /**
    * Prefill only when the selected target changes.
@@ -157,6 +175,18 @@ export function createOrderSheet(root: HTMLElement): {
     clearCb?.(scope);
   }
 
+  function showOrderSheet(): void {
+    combatLog.style.display = 'none';
+    sheet.style.display = 'flex';
+    controlBar.style.display = 'none';
+  }
+
+  function showEmptyCombatLog(): void {
+    sheet.style.display = 'none';
+    controlBar.style.display = 'flex';
+    combatLog.style.display = 'flex';
+  }
+
   send.addEventListener('pointerdown', () => {
     submitTextLatch = input.value;
   });
@@ -165,13 +195,14 @@ export function createOrderSheet(root: HTMLElement): {
   closeBtn.addEventListener('click', () => closeCb?.());
   partyBtn.addEventListener('click', () => partyCb?.());
 
+  showEmptyCombatLog();
+
   return {
     el: wrap,
     controlBar,
     showActor(actor, debug) {
       scope = 'actor';
-      sheet.style.display = 'flex';
-      controlBar.style.display = 'none';
+      showOrderSheet();
       const vis = sheetVisibleFields(actor, debug);
       title.textContent = actor.name;
 
@@ -225,8 +256,7 @@ export function createOrderSheet(root: HTMLElement): {
     },
     showParty(partyOrder) {
       scope = 'party';
-      sheet.style.display = 'flex';
-      controlBar.style.display = 'none';
+      showOrderSheet();
       title.textContent = 'Party order';
       debugPanel.style.display = 'none';
       input.style.display = 'block';
@@ -237,10 +267,33 @@ export function createOrderSheet(root: HTMLElement): {
       if (isNew) input.focus();
     },
     hide() {
-      sheet.style.display = 'none';
-      controlBar.style.display = 'flex';
+      showEmptyCombatLog();
       lastSyncedKey = null;
+      lastCombatLogLen = -1;
       input.setAttribute('aria-label', 'Standing order');
+    },
+    showCombatLog(entries) {
+      if (combatLog.style.display === 'none') return;
+      if (entries.length === lastCombatLogLen) return;
+      lastCombatLogLen = entries.length;
+      if (entries.length === 0) {
+        combatLog.innerHTML =
+          '<div style="color:#64748b">Combat log — decisions and ability results appear here.</div>';
+        return;
+      }
+      combatLog.innerHTML = entries
+        .map((e) => {
+          const t = e.time.toFixed(1);
+          const body =
+            e.kind === 'decide'
+              ? `<strong>${escapeHtml(e.text)}</strong>`
+              : escapeHtml(e.text);
+          return `<div><span style="color:#64748b">${t}</span> ${body}</div>`;
+        })
+        .join('');
+      if (stickCombatLogToBottom) {
+        combatLog.scrollTop = combatLog.scrollHeight;
+      }
     },
     onSubmit(cb) {
       submitCb = cb;
@@ -255,6 +308,14 @@ export function createOrderSheet(root: HTMLElement): {
       partyCb = cb;
     },
   };
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
 }
 
 function buttonStyle(): string {

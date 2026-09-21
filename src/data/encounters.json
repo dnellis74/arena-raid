@@ -1,7 +1,7 @@
 {
   "arena": { "w": 16, "h": 25 },
   "referenceFight": {
-    "id": "ref_4v5",
+    "id": "ref_4v4",
     "allowedStates": [
       "hold_and_shoot",
       "close_and_attack",
@@ -43,22 +43,16 @@
         "id": "e2",
         "side": "enemy",
         "kind": "goblin",
-        "pos": { "x": 7, "y": 21 }
+        "pos": { "x": 8, "y": 21 }
       },
       {
         "id": "e3",
         "side": "enemy",
         "kind": "goblin",
-        "pos": { "x": 10, "y": 21 }
+        "pos": { "x": 12, "y": 20 }
       },
       {
         "id": "e4",
-        "side": "enemy",
-        "kind": "goblin",
-        "pos": { "x": 13, "y": 20 }
-      },
-      {
-        "id": "e5",
         "side": "enemy",
         "kind": "hobgoblin",
         "pos": { "x": 8, "y": 23 }

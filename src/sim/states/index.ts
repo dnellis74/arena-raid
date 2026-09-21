@@ -1,6 +1,7 @@
 import { pickHealTarget, tryBeginCast } from '../abilities.ts';
 import { bandToUnits, wallDistance } from '../buckets.ts';
 import { getAbility } from '../actor.ts';
+import { pushDecideLog } from '../combatLog.ts';
 import { headingHitsWall, steer } from '../steering.ts';
 import type { AbilityId, Actor, StateId, Vec2 } from '../types.ts';
 import { ARENA_H, ARENA_W } from '../types.ts';
@@ -19,7 +20,7 @@ function roomAlong(pos: Vec2, dir: Vec2): number {
   return Number.isFinite(t) ? t : 0;
 }
 
-function skirmishFleeIntent(world: World, actor: Actor, away: Vec2): Vec2 {
+function fleeIntent(world: World, actor: Actor, away: Vec2): Vec2 {
   const wd = wallDistance(actor.pos);
   // Near a wall, cut a wider arc (or pure lateral) so we don't pin ourselves.
   const deg = wd < 2.5 ? 80 : wd < 4 ? 55 : 35;
@@ -43,6 +44,14 @@ function skirmishFleeIntent(world: World, actor: Actor, away: Vec2): Vec2 {
   }
   void world;
   return intent;
+}
+
+function ensureFleeSign(world: World, actor: Actor, away: Vec2): void {
+  if (actor.stateParams.skirmishSign !== undefined) return;
+  let sign: 1 | -1 = world.rng() < 0.5 ? 1 : -1;
+  const rotated = rotate(away, ((35 * Math.PI) / 180) * sign);
+  if (headingHitsWall(actor.pos, rotated, 3)) sign = sign === 1 ? -1 : 1;
+  actor.stateParams.skirmishSign = sign;
 }
 
 export type StateHandler = (world: World, actor: Actor, dt: number) => void;
@@ -165,10 +174,7 @@ export const skirmish: StateHandler = (world, actor) => {
   const away = scale(toward, -1);
 
   if (actor.stateParams.skirmishSign === undefined) {
-    let sign: 1 | -1 = world.rng() < 0.5 ? 1 : -1;
-    const rotated = rotate(away, ((35 * Math.PI) / 180) * sign);
-    if (headingHitsWall(actor.pos, rotated, 3)) sign = sign === 1 ? -1 : 1;
-    actor.stateParams.skirmishSign = sign;
+    ensureFleeSign(world, actor, away);
   }
 
   if (gap < min) {
@@ -182,7 +188,7 @@ export const skirmish: StateHandler = (world, actor) => {
       actor.vel = zero();
       tryCastAbility(world, actor, id, target);
     } else {
-      applyMove(world, actor, skirmishFleeIntent(world, actor, away));
+      applyMove(world, actor, fleeIntent(world, actor, away));
     }
   } else if (gap > max) {
     applyMove(world, actor, toward);
@@ -198,7 +204,7 @@ export const skirmish: StateHandler = (world, actor) => {
       actor.vel = zero();
       tryCastAbility(world, actor, id, target);
     } else if (gap < mid && isApproaching(target, actor) && !actor.casting) {
-      applyMove(world, actor, skirmishFleeIntent(world, actor, away));
+      applyMove(world, actor, fleeIntent(world, actor, away));
     } else {
       actor.vel = zero();
     }
@@ -215,11 +221,19 @@ export const retreat: StateHandler = (world, actor) => {
   for (const h of hs) {
     away = { x: away.x + (actor.pos.x - h.pos.x), y: away.y + (actor.pos.y - h.pos.y) };
   }
-  applyMove(world, actor, norm(away));
+  away = norm(away);
+  if (len(away) < 1e-6) {
+    actor.vel = zero();
+    return;
+  }
+  ensureFleeSign(world, actor, away);
+  // Same wall-aware arc as skirmish flee — pure backpedal pins into the edge.
+  applyMove(world, actor, fleeIntent(world, actor, away));
   const nearest = nearestHostile(world, actor);
   if (nearest && gapTo(actor, nearest) > 10) {
     actor.state = 'hold_and_shoot';
     actor.lastStateChangeTick = world.tick;
+    pushDecideLog(world, actor.name, 'hold_and_shoot');
   }
 };
 

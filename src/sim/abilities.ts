@@ -4,6 +4,7 @@ import type { World } from './world.ts';
 import { allies, gapTo, getActor, pushFloating } from './world.ts';
 import { add, dist, norm, scale, sub } from './vec.ts';
 import { clampToArena } from './buckets.ts';
+import { pushCombatLog } from './combatLog.ts';
 
 /** Edge-to-point reach for ground placement (point has no radius). */
 function groundReach(caster: Actor, point: Vec2): number {
@@ -85,35 +86,87 @@ export function resolveAbility(
   const target = targetId ? getActor(world, targetId) : null;
 
   if (ab.delivery === 'melee' || ab.delivery === 'ranged') {
-    if (!target || !target.alive) return;
-    if (gapTo(caster, target) > ab.range + 0.15) return;
+    if (!target || !target.alive) {
+      pushCombatLog(world, `${caster.name} uses ${ab.name} but the target is gone`);
+      return;
+    }
+    if (gapTo(caster, target) > ab.range + 0.15) {
+      pushCombatLog(
+        world,
+        `${caster.name} uses ${ab.name} on ${target.name} but is out of range`,
+      );
+      return;
+    }
     const multi = ab.effects?.find((fx) => fx.type === 'multi_hit');
     if (multi && multi.type === 'multi_hit') {
-      scheduleMultiHit(world, caster, target, multi.hits, multi.perHit, multi.span);
+      scheduleMultiHit(world, caster, target, multi.hits, multi.perHit, multi.span, ab.name);
     } else {
-      applyDamage(world, caster, target, ab.damage ?? 0);
+      const actor = caster.name;
+      const abn = ab.name;
+      const tgt = target.name;
+      let line = `${actor} uses ${abn} on ${tgt}`;
+      if ((ab.damage ?? 0) > 0) {
+        const hit = applyDamage(world, caster, target, ab.damage ?? 0);
+        if (hit.kind === 'miss') {
+          line += ` but ${tgt} dodges`;
+        } else if (hit.kind === 'hit') {
+          line += ` for ${hit.amount} damage`;
+        }
+      }
+      for (const fx of ab.effects ?? []) {
+        if (fx.type === 'force_retarget') line += ', taunting them';
+        if (fx.type === 'damage_taken_up') line += ', marking them';
+      }
+      pushCombatLog(world, line);
     }
     if (ab.healing && ab.id === 'mending_lash') {
       const ally = lowestHpAlly(world, caster);
-      if (ally) applyHeal(world, ally, ab.healing);
+      if (ally) {
+        const healed = applyHeal(world, ally, ab.healing);
+        if (healed > 0) {
+          pushCombatLog(world, `${ab.name} heals ${ally.name} for ${healed}`);
+        }
+      }
     }
   }
 
   if (ab.delivery === 'ally') {
-    if (!target || !target.alive || target.side !== caster.side) return;
-    if (gapTo(caster, target) > ab.range + 0.15) return;
-    if (ab.healing) applyHeal(world, target, ab.healing);
-    if (ab.id === 'cleanse') {
-      // Remove one harmful effect (debuff marker). Near-useless until debuffs exist.
-      const idx = target.statuses.findIndex((s) => s.type === 'debuff');
-      if (idx >= 0) target.statuses.splice(idx, 1);
+    if (!target || !target.alive || target.side !== caster.side) {
+      pushCombatLog(world, `${caster.name} uses ${ab.name} but has no valid ally`);
+      return;
     }
+    if (gapTo(caster, target) > ab.range + 0.15) {
+      pushCombatLog(
+        world,
+        `${caster.name} uses ${ab.name} on ${target.name} but is out of range`,
+      );
+      return;
+    }
+    const parts: string[] = [`${caster.name} uses ${ab.name} on ${target.name}`];
+    if (ab.healing) {
+      const healed = applyHeal(world, target, ab.healing);
+      if (healed > 0) parts.push(`healing ${healed}`);
+    }
+    if (ab.id === 'cleanse') {
+      const idx = target.statuses.findIndex((s) => s.type === 'debuff');
+      if (idx >= 0) {
+        target.statuses.splice(idx, 1);
+        parts.push('removing a debuff');
+      }
+    }
+    pushCombatLog(world, parts.join(', '));
   }
 
   if (ab.delivery === 'ground') {
     const p = point ?? target?.pos;
-    if (!p) return;
-    if (groundOutOfRange(caster, p, target, ab.range, 0.15)) return;
+    if (!p) {
+      pushCombatLog(world, `${caster.name} uses ${ab.name} but has nowhere to place it`);
+      return;
+    }
+    if (groundOutOfRange(caster, p, target, ab.range, 0.15)) {
+      pushCombatLog(world, `${caster.name} uses ${ab.name} but is out of range`);
+      return;
+    }
     for (const fx of ab.effects ?? []) {
       if (fx.type === 'slow_zone') {
         world.groundEffects.push({
@@ -127,23 +180,28 @@ export function resolveAbility(
         });
       }
     }
+    const on = target ? ` at ${target.name}'s feet` : '';
+    pushCombatLog(world, `${caster.name} uses ${ab.name}${on}`);
   }
 
   if (ab.delivery === 'self') {
+    const results: string[] = [];
     for (const fx of ab.effects ?? []) {
       if (fx.type === 'damage_reduction') {
         applyAura(world, caster, 'damage_reduction', fx.duration, fx.factor, fx.radius ?? 0);
+        results.push('gaining a bulwark');
       } else if (fx.type === 'damage_up') {
         applyAura(world, caster, 'damage_up', fx.duration, fx.factor, fx.radius ?? 0);
+        results.push('rallying with a shout');
       } else if (fx.type === 'dodge_window') {
         caster.dodgeUntil = world.time + fx.duration;
         pushFloating(world, caster.pos, 'feint', '#fca5a5');
+        results.push('preparing to dodge');
       } else if (fx.type === 'dash') {
         const t = caster.stateParams.targetId
           ? getActor(world, caster.stateParams.targetId)
           : null;
         const dir = t ? norm(sub(t.pos, caster.pos)) : { x: 0, y: -1 };
-        // Instant teleport — ignores other actors (collision is not applied mid-dash).
         caster.pos = clampToArena(
           add(caster.pos, scale(dir, Math.min(fx.range, ab.range))),
           caster.radius,
@@ -151,8 +209,15 @@ export function resolveAbility(
           world.encounter.arenaH,
         );
         pushFloating(world, caster.pos, 'dash', '#fca5a5');
+        results.push(t ? `dashing toward ${t.name}` : 'dashing');
       }
     }
+    pushCombatLog(
+      world,
+      results.length
+        ? `${caster.name} uses ${ab.name}, ${results.join(' and ')}`
+        : `${caster.name} uses ${ab.name}`,
+    );
   }
 
   for (const fx of ab.effects ?? []) {
@@ -174,6 +239,11 @@ export function resolveAbility(
   }
 }
 
+export type DamageResult =
+  | { kind: 'hit'; amount: number }
+  | { kind: 'miss' }
+  | { kind: 'none' };
+
 /** Schedule multi-hit strikes evenly over `span` (first hit immediate). */
 function scheduleMultiHit(
   world: World,
@@ -182,21 +252,38 @@ function scheduleMultiHit(
   hits: number,
   perHit: number,
   span: number,
+  abilityName: string,
 ): void {
   const n = Math.max(1, hits);
   const step = n <= 1 ? 0 : span / (n - 1);
+  pushCombatLog(world, `${source.name} uses ${abilityName} on ${target.name}`);
   for (let i = 0; i < n; i++) {
     const resolveAt = world.time + i * step;
     if (i === 0) {
-      applyDamage(world, source, target, perHit);
+      const hit = applyDamage(world, source, target, perHit);
+      logStrikeResult(world, abilityName, target, hit);
     } else {
       world.pendingStrikes.push({
         resolveAt,
         sourceId: source.id,
         targetId: target.id,
         damage: perHit,
+        abilityName,
       });
     }
+  }
+}
+
+function logStrikeResult(
+  world: World,
+  abilityName: string,
+  target: Actor,
+  hit: DamageResult,
+): void {
+  if (hit.kind === 'miss') {
+    pushCombatLog(world, `${abilityName} misses ${target.name}`);
+  } else if (hit.kind === 'hit') {
+    pushCombatLog(world, `${abilityName} hits ${target.name} for ${hit.amount}`);
   }
 }
 
@@ -214,7 +301,8 @@ export function tickPendingStrikes(world: World): void {
     const source = getActor(world, s.sourceId);
     const target = getActor(world, s.targetId);
     if (!source?.alive || !target?.alive) continue;
-    applyDamage(world, source, target, s.damage);
+    const hit = applyDamage(world, source, target, s.damage);
+    if (s.abilityName) logStrikeResult(world, s.abilityName, target, hit);
   }
 }
 
@@ -299,12 +387,12 @@ export function applyDamage(
   source: Actor,
   target: Actor,
   raw: number,
-): void {
-  if (!target.alive || raw <= 0) return;
+): DamageResult {
+  if (!target.alive || raw <= 0) return { kind: 'none' };
   if (world.time < target.dodgeUntil) {
     pushFloating(world, target.pos, 'miss', '#94a3b8');
     target.dodgeUntil = 0;
-    return;
+    return { kind: 'miss' };
   }
   let dmg = raw;
   const up = source.statuses.find((s) => s.type === 'damage_up');
@@ -322,10 +410,14 @@ export function applyDamage(
     target.casting = null;
     target.vel = { x: 0, y: 0 };
   }
+  return { kind: 'hit', amount: dmg };
 }
 
-export function applyHeal(world: World, target: Actor, amount: number): void {
-  if (!target.alive) return;
+export function applyHeal(world: World, target: Actor, amount: number): number {
+  if (!target.alive || amount <= 0) return 0;
+  const before = target.hp;
   target.hp = Math.min(target.hpMax, target.hp + amount);
-  pushFloating(world, target.pos, `+${amount}`, '#4ade80');
+  const healed = Math.round((target.hp - before) * 100) / 100;
+  if (healed > 0) pushFloating(world, target.pos, `+${healed}`, '#4ade80');
+  return healed;
 }

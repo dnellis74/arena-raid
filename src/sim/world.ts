@@ -16,6 +16,7 @@ import type {
 } from './types.ts';
 import { ARENA_H, ARENA_W } from './types.ts';
 import { dist } from './vec.ts';
+import { pushDecideLog, type CombatLogEntry } from './combatLog.ts';
 
 export interface World {
   encounter: Encounter;
@@ -27,6 +28,7 @@ export interface World {
   pendingStrikes: PendingStrike[];
   floatingTexts: FloatingText[];
   decisionLog: DecisionEntry[];
+  combatLog: CombatLogEntry[];
   partyOrder: string | null;
   matchOver: boolean;
   winner: Side | null;
@@ -83,6 +85,7 @@ export function createReferenceFight(
     pendingStrikes: [],
     floatingTexts: [],
     decisionLog: [],
+    combatLog: [],
     partyOrder: null,
     matchOver: false,
     winner: null,
@@ -154,6 +157,7 @@ export function recordDecision(world: World, entry: DecisionEntry): void {
   if (actor.decisionLog.length > 10) actor.decisionLog.shift();
   if (actor.state !== entry.state) {
     actor.lastStateChangeTick = world.tick;
+    pushDecideLog(world, actor.name, entry.state);
   }
   actor.state = entry.state;
   actor.stateParams = { ...actor.stateParams, ...entry.params };

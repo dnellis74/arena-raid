@@ -86,6 +86,8 @@ export interface PendingStrike {
   sourceId: ActorId;
   targetId: ActorId;
   damage: number;
+  /** Ability name for combat-log lines on delayed multi-hits. */
+  abilityName?: string;
 }
 
 export interface FloatingText {

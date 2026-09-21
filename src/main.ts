@@ -105,6 +105,7 @@ function resetMatch(): void {
 
   selectedId = null;
   sheet.hide();
+  sheet.showCombatLog(world.combatLog);
   timeScale = 1;
   resumeScale = 1;
 }
@@ -120,6 +121,28 @@ function resumeFromSheet(): void {
   sheetScope = 'actor';
   sheet.hide();
 }
+
+window.addEventListener('keydown', (ev) => {
+  if (ev.code !== 'Space') return;
+  const el = ev.target as HTMLElement | null;
+  if (
+    el &&
+    (el.tagName === 'TEXTAREA' ||
+      el.tagName === 'INPUT' ||
+      el.isContentEditable)
+  ) {
+    return;
+  }
+  ev.preventDefault();
+  // Sheet selection already pauses; don't fight it with Space.
+  if (selectedId || sheetScope === 'party') return;
+  if (timeScale === 0) {
+    timeScale = resumeScale || 1;
+  } else {
+    resumeScale = timeScale;
+    timeScale = 0;
+  }
+});
 
 canvas.addEventListener('pointerdown', (ev) => {
   const rect = canvas.getBoundingClientRect();
@@ -231,6 +254,8 @@ function frame(now: number): void {
   if (selectedId && sheetScope === 'actor') {
     const actor = getActor(world, selectedId);
     if (actor) sheet.showActor(actor, debug);
+  } else if (!selectedId && sheetScope === 'actor') {
+    sheet.showCombatLog(world.combatLog);
   }
 
   requestAnimationFrame(frame);

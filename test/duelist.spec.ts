@@ -35,12 +35,11 @@ describe('Duelist spawn', () => {
     expect(p.partyOrder).toBeNull();
   });
 
-  it('joins the full party against four goblins and a hobgoblin', () => {
+  it('joins the full party against three goblins and a hobgoblin', () => {
     const w = createReferenceFight(1);
     expect(w.actors.map((a) => a.kind).sort()).toEqual([
       'arcanist',
       'duelist',
-      'goblin',
       'goblin',
       'goblin',
       'goblin',

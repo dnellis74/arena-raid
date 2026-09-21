@@ -88,9 +88,9 @@ describe('mulberry32', () => {
 });
 
 describe('actors move collide attack die', () => {
-  it('spawns the full party vs four goblins and a hobgoblin and can kill', () => {
+  it('spawns the full party vs three goblins and a hobgoblin and can kill', () => {
     const w = createReferenceFight(1);
-    expect(w.actors).toHaveLength(9);
+    expect(w.actors).toHaveLength(8);
     const p = w.actors.find((a) => a.kind === 'arcanist')!;
     const v = w.actors.find((a) => a.kind === 'vanguard')!;
     const ward = w.actors.find((a) => a.kind === 'warden')!;
@@ -101,10 +101,10 @@ describe('actors move collide attack die', () => {
     expect(v.hp).toBe(40);
     expect(ward.hp).toBe(28);
     expect(d.hp).toBe(22);
-    expect(goblins).toHaveLength(4);
+    expect(goblins).toHaveLength(3);
     expect(goblins.every((g) => g.hp === 20)).toBe(true);
     expect(hob.hp).toBe(30);
-    expect(hob.state).toBe('hold_and_shoot');
+    expect(hob.state).toBe('skirmish');
     expect(hob.abilities).toEqual(['crossbow_bolt']);
 
     // Force close combat
@@ -118,7 +118,6 @@ describe('actors move collide attack die', () => {
     goblins[0]!.pos = { x: 8, y: 15.2 };
     goblins[1]!.pos = { x: 9, y: 15.2 };
     goblins[2]!.pos = { x: 7, y: 15.2 };
-    goblins[3]!.pos = { x: 10, y: 15.2 };
     hob.pos = { x: 8.5, y: 15.5 };
     runTicks(w, 60 * 20);
     expect(w.matchOver).toBe(true);
@@ -132,7 +131,8 @@ describe('Hobgoblin', () => {
     const p = w.actors.find((a) => a.kind === 'arcanist')!;
     expect(hob.outline).toBe('#F59E0B');
     expect(hob.glyph).toBe('H');
-    expect(hob.state).toBe('hold_and_shoot');
+    expect(hob.state).toBe('skirmish');
+    expect(hob.stateParams.rangeBand).toBe('well_clear');
     expect(hob.moveSpeed).toBe(3.0);
 
     const bolt = getAbility('crossbow_bolt');
@@ -173,6 +173,27 @@ describe('behaviors via synthetic answers', () => {
       runTicks(w, 30);
       expect(w.encounter.allowedStates).toContain(p.state);
     }
+  });
+
+  it('retreat arcs along the wall instead of pinning into it', () => {
+    const w = createReferenceFight(11, { players: ['arcanist'], enemies: 1 });
+    const p = w.actors.find((a) => a.kind === 'arcanist')!;
+    const g = w.actors.find((a) => a.kind === 'goblin')!;
+    // Pin against the south wall with the goblin north — pure backpedal has nowhere to go.
+    p.pos = { x: 8, y: 1.2 };
+    p.vel = { x: 0, y: 0 };
+    p.state = 'retreat';
+    p.stateParams.skirmishSign = 1;
+    g.pos = { x: 8, y: 6 };
+    g.vel = { x: 0, y: 0 };
+    g.state = 'hold_and_shoot';
+    const startX = p.pos.x;
+    runTicks(w, Math.ceil(1.5 / DT));
+    expect(p.state).toBe('retreat');
+    expect(p.alive).toBe(true);
+    // Should slide laterally along the wall, not stay glued at center.
+    expect(Math.abs(p.pos.x - startX)).toBeGreaterThan(1.5);
+    expect(p.pos.y).toBeLessThan(3);
   });
 
   it('hysteresis keeps state on low confidence', () => {
